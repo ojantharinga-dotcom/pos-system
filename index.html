@@ -1,0 +1,4553 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LankaPOS - Smart Retail POS & Inventory</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#5551ff', // Matching vibrant Dribbble purple
+              700: '#4844e6',
+              800: '#3c38cf',
+              900: '#2d2bb3',
+            },
+            app: {
+              bg: '#f0f2f6',
+              surface: '#ffffff',
+              sidebar: '#ffffff',
+              border: '#e8ecf4',
+              darkcard: '#0c101d',
+            }
+          },
+          borderRadius: {
+            '2xl': '1rem',
+            '3xl': '1.5rem',
+            '4xl': '2rem',
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(90, 105, 135, 0.06)',
+            'card': '0 10px 30px -4px rgba(90, 105, 135, 0.08)',
+            'brand': '0 10px 25px -3px rgba(85, 81, 255, 0.35)',
+            'glow': '0 0 35px -5px rgba(85, 81, 255, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar for smooth modern UI */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Print specific styling strictly scoped for receipts */
+    @media print {
+      @page {
+        margin: 4mm;
+        size: auto;
+      }
+      html, body {
+        background: #fff !important;
+        color: #000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      body * {
+        visibility: hidden !important;
+      }
+      #modal-receipt,
+      #modal-receipt * {
+        visibility: visible !important;
+      }
+      #modal-receipt {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: transparent !important;
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      #modal-receipt > div {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print,
+      .receipt-actions {
+        display: none !important;
+      }
+      #receipt-print-area {
+        position: static !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        padding: 4mm !important;
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+      }
+      #receipt-print-area[data-size="58mm"] {
+        max-width: 56mm !important;
+        font-size: 11px !important;
+      }
+      #receipt-print-area[data-size="80mm"] {
+        max-width: 78mm !important;
+        font-size: 12px !important;
+      }
+      #receipt-print-area[data-size="A4"] {
+        max-width: 190mm !important;
+        font-size: 13px !important;
+      }
+    }
+  </style>
+</head>
+<body class="h-full bg-[#f0f2f6] text-slate-800 font-sans flex overflow-hidden select-none antialiased">
+
+  <!-- ======================================================== -->
+  <!-- LEFT SIDEBAR (Matching uploaded design: Coursie style)     -->
+  <!-- ======================================================== -->
+  <aside class="w-[260px] h-full bg-white m-3 mr-0 rounded-3xl border border-slate-200/80 shadow-soft flex flex-col justify-between p-5 shrink-0 z-30 transition-all duration-200">
+    <!-- Brand Header -->
+    <div class="space-y-6">
+      <div class="flex items-center gap-3 px-2 pt-1">
+        <div class="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center text-white font-extrabold text-xl shadow-brand">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg tracking-tight text-slate-900 leading-none">LankaPOS</h1>
+          <p class="text-[11px] font-semibold text-slate-400 mt-0.5">Retail & Grocery OS</p>
+        </div>
+      </div>
+
+      <!-- Navigation Section 1: MAIN MENU -->
+      <div class="space-y-1">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">MENU</p>
+        
+        <!-- Dashboard Tab -->
+        <button onclick="router.navigate('dashboard')" id="nav-btn-dashboard" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          </span>
+          <span>Dashboard</span>
+        </button>
+
+        <!-- POS Terminal Tab (Active by default) -->
+        <button onclick="router.navigate('pos')" id="nav-btn-pos" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 bg-brand-600 text-white shadow-brand">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </span>
+          <span>POS Terminal</span>
+        </button>
+
+        <!-- Products & Stock Tab -->
+        <button onclick="router.navigate('products')" id="nav-btn-products" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          </span>
+          <span>Products & Stock</span>
+        </button>
+
+        <!-- Sales History Tab -->
+        <button onclick="router.navigate('history')" id="nav-btn-history" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+          </span>
+          <span>Sales History</span>
+        </button>
+
+        <!-- Analytics / Reports Tab -->
+        <button onclick="router.navigate('reports')" id="nav-btn-reports" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </span>
+          <span>Analytics</span>
+        </button>
+      </div>
+
+      <!-- Navigation Section 2: GENERAL -->
+      <div class="space-y-1 pt-2">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">GENERAL</p>
+
+        <!-- Settings Tab -->
+        <button onclick="router.navigate('settings')" id="nav-btn-settings" class="nav-tab group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center transition group-hover:scale-105">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </span>
+          <span>Settings & Storage</span>
+        </button>
+
+        <!-- Quick Restock Helper -->
+        <button onclick="stockManager.openQuickModal()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition">
+          <span class="w-7 h-7 rounded-xl flex items-center justify-center text-emerald-600 bg-emerald-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          </span>
+          <span>+ Stock In (Restock)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Dark Card (Matching image's dark mobile app card) -->
+    <div class="relative overflow-hidden p-4 rounded-3xl bg-gradient-to-br from-[#0c101d] via-[#141a2e] to-[#0c101d] text-white shadow-card">
+      <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-brand-600/30 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="relative z-10 space-y-2">
+        <div class="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center text-indigo-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M10 11h4"/></svg>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-white tracking-tight">Offline File Storage</p>
+          <p class="text-[10px] text-slate-400 leading-tight mt-0.5">Auto-synced into <span class="font-mono text-indigo-300">data.json</span></p>
+        </div>
+        <button onclick="storage.forceReloadFromFile()" class="w-full py-2 px-3 mt-1 rounded-xl bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-[11px] font-bold shadow-brand transition flex items-center justify-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Sync Disk Data
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ======================================================== -->
+  <!-- MAIN APP CONTAINER (Top Bar + Dynamic Screens)           -->
+  <!-- ======================================================== -->
+  <div class="flex-1 flex flex-col h-full m-3 ml-3 overflow-hidden">
+
+    <!-- Top Bar (Search + Storage Pill + Profile) -->
+    <header class="h-16 px-6 bg-white rounded-3xl border border-slate-200/80 shadow-soft flex items-center justify-between gap-4 shrink-0 z-20 mb-3">
+      <!-- Search Input (Pill style matching reference image) -->
+      <div class="relative flex-1 max-w-md">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </span>
+        <input type="text" id="global-search-input" oninput="posView.handleSearch(this.value)" placeholder="Search for items, barcodes, or SKU..." class="w-full pl-11 pr-4 py-2 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200/80 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+      </div>
+
+      <!-- Right Action Items -->
+      <div class="flex items-center gap-3">
+        <!-- Storage Status Badge -->
+        <div id="storage-status-pill" onclick="storage.linkDirectFile()" class="flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer transition select-none hover:bg-emerald-100" title="Click for storage options">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="storage-status-text">Live Auto-Sync: data.json</span>
+          <span id="storage-save-dot" class="w-1.5 h-1.5 rounded-full bg-brand-600 opacity-0 transition-opacity"></span>
+        </div>
+
+        <!-- Quick Action Icon: Envelope / Notification -->
+        <button onclick="dataManager.exportFullBackup()" class="w-10 h-10 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-600 transition" title="Export Backup JSON">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </button>
+
+        <!-- Notification Bell -->
+        <button class="w-10 h-10 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-600 transition" title="Notifications">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        </button>
+
+        <!-- Cashier Profile Chip (Matching Kim Jiwon profile card in image) -->
+        <div class="flex items-center gap-2.5 pl-2">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 p-0.5 shadow-sm">
+            <div class="w-full h-full rounded-[14px] bg-white flex items-center justify-center font-black text-brand-600 text-sm">
+              LP
+            </div>
+          </div>
+          <div class="hidden sm:block text-left">
+            <p id="header-company-name" class="text-xs font-bold text-slate-900 leading-tight">Lanka Super Grocery</p>
+            <p class="text-[10px] font-semibold text-slate-400">Cashier / Station 01</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Dynamic Screens Container -->
+    <main class="flex-1 overflow-hidden relative">
+
+      <!-- ==================================================== -->
+      <!-- VIEW 1: DASHBOARD (Matching the uploaded reference!) -->
+      <!-- ==================================================== -->
+      <section id="view-dashboard" class="h-full overflow-y-auto hidden pr-1 space-y-4">
+        <!-- Dashboard Header & Action Buttons -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Dashboard</h2>
+            <p class="text-xs font-medium text-slate-400">A quick view of your sales, stock, and live store updates</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="productManager.openModal(false)" class="px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 active:scale-95 text-white font-bold text-xs shadow-brand transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              <span>+ Add Product</span>
+            </button>
+            <button onclick="stockManager.openQuickModal()" class="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 active:scale-95 border border-slate-200/90 text-slate-700 font-bold text-xs shadow-soft transition flex items-center gap-1.5">
+              <span>+ Add Stock</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Key Stat Cards (Matching exact design with solid purple first card + circular arrows) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <!-- Card 1: Solid Vibrant Purple (Matching "Tasks Completed 72") -->
+          <div class="p-5 rounded-3xl bg-brand-600 text-white shadow-brand relative overflow-hidden flex flex-col justify-between min-h-[145px]">
+            <div class="flex items-start justify-between">
+              <p class="text-xs font-semibold text-white/80">Today's Revenue</p>
+              <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 17L17 7m0 0H8m9 0v9"/></svg>
+              </span>
+            </div>
+            <div>
+              <h3 id="dash-today-sales" class="text-3xl font-black tracking-tight">Rs. 0.00</h3>
+              <p id="dash-today-orders" class="text-[11px] font-medium text-white/80 mt-1 flex items-center gap-1">
+                <span>0 invoices created today</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 2: White (Matching "Tasks In Progress 145") -->
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between min-h-[145px]">
+            <div class="flex items-start justify-between">
+              <p class="text-xs font-bold text-slate-500">Active Grocery Stock</p>
+              <span class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 17L17 7m0 0H8m9 0v9"/></svg>
+              </span>
+            </div>
+            <div>
+              <h3 id="dash-products-count" class="text-3xl font-black text-slate-900 tracking-tight">83 Items</h3>
+              <p id="dash-low-stock-count" class="text-[11px] font-semibold text-amber-500 mt-1">0 low stock alert</p>
+            </div>
+          </div>
+
+          <!-- Card 3: White (Matching "Pending Reviews 32") -->
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between min-h-[145px]">
+            <div class="flex items-start justify-between">
+              <p class="text-xs font-bold text-slate-500">Est. Today's Profit</p>
+              <span class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 17L17 7m0 0H8m9 0v9"/></svg>
+              </span>
+            </div>
+            <div>
+              <h3 id="dash-today-profit" class="text-3xl font-black text-emerald-600 tracking-tight">Rs. 0.00</h3>
+              <p class="text-[11px] font-semibold text-slate-400 mt-1">Based on grocery margins</p>
+            </div>
+          </div>
+
+          <!-- Card 4: White (Matching "Overdue Tasks 72") -->
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between min-h-[145px]">
+            <div class="flex items-start justify-between">
+              <p class="text-xs font-bold text-slate-500">Total Sales Value</p>
+              <span class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 17L17 7m0 0H8m9 0v9"/></svg>
+              </span>
+            </div>
+            <div>
+              <h3 id="dash-month-revenue" class="text-3xl font-black text-slate-900 tracking-tight">Rs. 0.00</h3>
+              <p class="text-[11px] font-semibold text-brand-600 mt-1">All-time turnover</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Visual Row: Weekly Capsule Bar Chart + Quick Meeting / Meeting with Arc style card -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+          <!-- Capsule Bar Chart (Matching Project Analytics M T W T F S S capsules from image!) -->
+          <div class="lg:col-span-5 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between">
+            <div>
+              <h4 class="font-extrabold text-sm text-slate-900">Weekly Sales Volume</h4>
+              <p class="text-[11px] text-slate-400 font-medium">Daily transaction frequency</p>
+            </div>
+
+            <!-- Capsule Bars -->
+            <div class="flex items-end justify-between pt-6 pb-2 px-2">
+              <!-- Mon -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-16 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">M</span>
+              </div>
+              <!-- Tue -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-20 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">T</span>
+              </div>
+              <!-- Wed -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-22 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">W</span>
+              </div>
+              <!-- Thu -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-26 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">T</span>
+              </div>
+              <!-- Fri -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-18 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">F</span>
+              </div>
+              <!-- Sat -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-26 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">S</span>
+              </div>
+              <!-- Sun -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-28 rounded-full bg-slate-100 flex items-end p-1 relative">
+                  <div class="w-full h-24 rounded-full bg-brand-600 flex items-start justify-center pt-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">S</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Card (Matching "Meeting with Arc Company" card) -->
+          <div class="lg:col-span-3 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Quick Action</p>
+              <h4 class="font-extrabold text-base text-brand-600 mt-2">New Sale Transaction</h4>
+              <p class="text-xs text-slate-500 mt-1">Open billing register & scan grocery barcodes</p>
+            </div>
+            <button onclick="router.navigate('pos')" class="w-full py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-brand transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              <span>Open POS Terminal</span>
+            </button>
+          </div>
+
+          <!-- Top Selling Items (Matching Task List in image) -->
+          <div class="lg:col-span-4 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-extrabold text-sm text-slate-900">Bestselling Groceries</h4>
+              <button onclick="router.navigate('products')" class="text-[11px] font-bold text-brand-600 hover:underline">View All</button>
+            </div>
+            <div id="dash-top-products-list" class="divide-y divide-slate-100 overflow-y-auto max-h-[175px]">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Row: Recent Sales + Semi-circle Gauge + Glowing Time Tracker -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+          <!-- Recent Invoices (Matching team list card in reference image) -->
+          <div class="lg:col-span-5 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-extrabold text-sm text-slate-900">Recent Completed Invoices</h4>
+              <button onclick="router.navigate('history')" class="text-[11px] font-bold text-brand-600 hover:underline">All History</button>
+            </div>
+            <div id="dash-recent-sales-list" class="divide-y divide-slate-100 overflow-y-auto max-h-[180px]">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+
+          <!-- Gauge Chart (Matching 41% Project Ended semicircular gauge) -->
+          <div class="lg:col-span-4 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft flex flex-col justify-between">
+            <h4 class="font-extrabold text-sm text-slate-900">Inventory Health Gauge</h4>
+            <div class="flex flex-col items-center justify-center my-2">
+              <div class="relative w-40 h-20 overflow-hidden flex items-end justify-center">
+                <div class="w-36 h-36 rounded-full border-[14px] border-slate-100 border-t-brand-600 border-l-brand-600 transform rotate-45"></div>
+                <div class="absolute bottom-0 text-center">
+                  <span class="text-2xl font-black text-slate-900 tracking-tight">88%</span>
+                  <p class="text-[9px] font-bold text-slate-400 uppercase">Stock Ready</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-center items-center gap-4 text-[10px] font-bold text-slate-500 pt-1">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-600"></span> In Stock</span>
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Low Alert</span>
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Out</span>
+            </div>
+          </div>
+
+          <!-- Dark Ambient Glowing Time Tracker (Matching 01:24:08 card in reference image!) -->
+          <div class="lg:col-span-3 p-5 rounded-3xl bg-gradient-to-br from-[#0c101d] via-[#12182b] to-[#0c101d] text-white shadow-card relative overflow-hidden flex flex-col justify-between">
+            <div class="absolute -right-4 -top-4 w-28 h-28 bg-brand-600/25 rounded-full blur-2xl pointer-events-none"></div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Shift Clock</p>
+            <div class="my-auto text-center py-2">
+              <h3 id="current-clock" class="text-2xl font-mono font-black tracking-widest text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]">00:00:00</h3>
+              <p id="current-date" class="text-[10px] text-slate-400 mt-1">---</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
+              <button onclick="storage.syncToServer(true)" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" title="Force Save to data.json">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </button>
+              <button onclick="dataManager.exportFullBackup()" class="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-sm transition" title="Instant JSON Backup">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- VIEW 2: POS BILLING SCREEN                           -->
+      <!-- ==================================================== -->
+      <section id="view-pos" class="h-full flex flex-col md:flex-row gap-3 overflow-hidden">
+        <!-- Catalog & Category Filter Area -->
+        <div class="flex-1 flex flex-col h-full bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
+          <!-- Catalog Header & Categories -->
+          <div class="p-4 border-b border-slate-100 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-sm">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                </span>
+                <div>
+                  <h3 class="font-extrabold text-sm text-slate-900">Grocery Items Catalog</h3>
+                  <p class="text-[11px] text-slate-400">Click item to ring up, or scan barcode</p>
+                </div>
+              </div>
+
+              <!-- Action buttons in POS -->
+              <div class="flex items-center gap-2">
+                <button onclick="productManager.openModal(false)" class="px-3.5 py-2 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-brand transition flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                  <span>+ New Product</span>
+                </button>
+                <button onclick="stockManager.openQuickModal()" class="px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+                  <span>+ Add Stock</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category Pills (Matching capsule buttons in image) -->
+            <div id="pos-category-pills" class="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+
+          <!-- Product Grid -->
+          <div id="pos-product-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 content-start">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Right Cart & Register Panel -->
+        <div class="w-full md:w-[420px] lg:w-[450px] flex flex-col h-full bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden shrink-0">
+          <!-- Cart Header -->
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div>
+              <h2 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                Current Register Order
+                <span id="pos-cart-badge" class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-brand-50 text-brand-600">0 items</span>
+              </h2>
+              <p id="pos-current-invoice-id" class="text-xs text-slate-400 font-mono font-semibold">INV-1001</p>
+            </div>
+            <button onclick="cartManager.clearCart()" class="text-xs font-bold text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition">
+              Clear
+            </button>
+          </div>
+
+          <!-- Cart Items List -->
+          <div id="pos-cart-items" class="flex-1 overflow-y-auto p-4 space-y-2 divide-y divide-slate-100">
+            <!-- Rendered Dynamically -->
+          </div>
+
+          <!-- Calculation & Tender Area -->
+          <div class="p-4 bg-slate-50/70 border-t border-slate-100 space-y-3">
+            <div class="space-y-1.5 text-xs font-semibold text-slate-600">
+              <div class="flex justify-between items-center">
+                <span>Subtotal</span>
+                <span id="pos-calc-subtotal" class="font-bold text-slate-900">Rs. 0.00</span>
+              </div>
+              <div class="flex justify-between items-center gap-2">
+                <span>Discount</span>
+                <div class="flex items-center gap-1.5">
+                  <input type="number" id="pos-discount-input" min="0" value="0" oninput="cartManager.calculateTotals()" class="w-20 px-2 py-1 text-right text-xs rounded-xl border border-slate-200 bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  <select id="pos-discount-type" onchange="cartManager.calculateTotals()" class="text-xs rounded-xl border border-slate-200 bg-white p-1 font-bold text-slate-900">
+                    <option value="fixed">Rs.</option>
+                    <option value="percent">%</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex justify-between items-center">
+                <span id="pos-tax-label">Tax (0%)</span>
+                <span id="pos-calc-tax" class="font-bold text-slate-900">Rs. 0.00</span>
+              </div>
+              <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-sm font-black text-slate-900">
+                <span>Grand Total</span>
+                <span id="pos-calc-total" class="text-brand-600 text-2xl font-black">Rs. 0.00</span>
+              </div>
+            </div>
+
+            <!-- Quick Cash Chips -->
+            <div class="pt-1 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+              <span class="text-slate-400 font-bold">Quick Cash:</span>
+              <button type="button" onclick="cartManager.setExactCash()" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-brand-50 hover:text-brand-600 font-bold transition">Exact</button>
+              <button type="button" onclick="cartManager.setCashAmount(500)" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-brand-50 hover:text-brand-600 font-bold transition">500</button>
+              <button type="button" onclick="cartManager.setCashAmount(1000)" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-brand-50 hover:text-brand-600 font-bold transition">1,000</button>
+              <button type="button" onclick="cartManager.setCashAmount(2000)" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-brand-50 hover:text-brand-600 font-bold transition">2,000</button>
+              <button type="button" onclick="cartManager.setCashAmount(5000)" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-brand-50 hover:text-brand-600 font-bold transition">5,000</button>
+            </div>
+
+            <!-- Cash Input & Change -->
+            <div class="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label class="block text-slate-500 mb-1 font-bold">Cash Received</label>
+                <input type="number" id="pos-cash-received" oninput="cartManager.updateBalance()" placeholder="0.00" class="w-full px-3 py-2 text-sm font-black rounded-2xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+              </div>
+              <div>
+                <label class="block text-slate-500 mb-1 font-bold">Change Due</label>
+                <div id="pos-change-due" class="w-full px-3 py-2 text-sm font-black rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center">
+                  Rs. 0.00
+                </div>
+              </div>
+            </div>
+
+            <!-- Auto-print option toggle -->
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-semibold">
+                <input type="checkbox" id="pos-auto-print" checked class="rounded-lg border-slate-300 text-brand-600 focus:ring-brand-500 w-4 h-4">
+                <span>Auto-print receipt on checkout</span>
+              </label>
+            </div>
+
+            <!-- Checkout Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="cartManager.holdSale()" class="py-3 px-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition">
+                Hold Sale
+              </button>
+              <button onclick="cartManager.completeCheckout()" class="py-3 px-4 rounded-2xl bg-brand-600 hover:bg-brand-500 active:scale-95 text-white font-extrabold text-sm shadow-brand transition flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                Complete & Print (F9)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- VIEW 3: PRODUCTS & STOCK MANAGEMENT                  -->
+      <!-- ==================================================== -->
+      <section id="view-products" class="h-full overflow-y-auto hidden pr-1 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Products & Stock Inventory</h2>
+            <p class="text-xs text-slate-400 font-medium">83+ pre-loaded Sri Lankan grocery items with live stock management</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="stockManager.openQuickModal()" class="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+              <span>+ Add Stock (Restock)</span>
+            </button>
+            <button onclick="productManager.openModal(false)" class="px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-brand transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              <span>Add New Product</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Toolbar -->
+        <div class="p-3 bg-white rounded-3xl border border-slate-200/80 shadow-soft flex flex-wrap gap-3 items-center">
+          <input type="text" id="product-filter-search" oninput="productManager.renderTable()" placeholder="Filter by product name, barcode, or category..." class="flex-1 min-w-[220px] px-4 py-2 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <select id="product-filter-category" onchange="productManager.renderTable()" class="px-4 py-2 text-xs font-bold rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none">
+            <option value="">All Categories</option>
+          </select>
+          <select id="product-filter-stock" onchange="productManager.renderTable()" class="px-4 py-2 text-xs font-bold rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none">
+            <option value="">All Stock Levels</option>
+            <option value="low">Low Stock Only (&le; Alert)</option>
+            <option value="out">Out of Stock (0)</option>
+          </select>
+        </div>
+
+        <!-- Products Table -->
+        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 font-bold text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th class="p-4">Product Name</th>
+                  <th class="p-4">Category</th>
+                  <th class="p-4">Barcode / SKU</th>
+                  <th class="p-4 text-right">Cost Price</th>
+                  <th class="p-4 text-right">Selling Price</th>
+                  <th class="p-4 text-center">Available Stock</th>
+                  <th class="p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body" class="divide-y divide-slate-100 font-semibold">
+                <!-- Rendered Dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- VIEW 4: SALES HISTORY                                -->
+      <!-- ==================================================== -->
+      <section id="view-history" class="h-full overflow-y-auto hidden pr-1 space-y-4">
+        <div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Sales & Invoices History</h2>
+          <p class="text-xs text-slate-400 font-medium">Lookup previous orders, reprint receipts, or void transactions (items return to stock)</p>
+        </div>
+
+        <div class="p-3 bg-white rounded-3xl border border-slate-200/80 shadow-soft flex flex-wrap gap-3 items-center">
+          <input type="text" id="history-filter-search" oninput="historyManager.renderTable()" placeholder="Search invoice number or date..." class="flex-1 min-w-[200px] px-4 py-2 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none">
+          <input type="date" id="history-filter-date" onchange="historyManager.renderTable()" class="px-4 py-2 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none">
+          <button onclick="document.getElementById('history-filter-date').value=''; historyManager.renderTable();" class="text-xs px-3 py-1.5 font-bold text-slate-500 hover:text-slate-800">Clear Date</button>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 font-bold text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th class="p-4">Invoice #</th>
+                  <th class="p-4">Date & Time</th>
+                  <th class="p-4">Items Sold</th>
+                  <th class="p-4 text-right">Subtotal</th>
+                  <th class="p-4 text-right">Discount</th>
+                  <th class="p-4 text-right">Tax</th>
+                  <th class="p-4 text-right font-black">Total Paid</th>
+                  <th class="p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body" class="divide-y divide-slate-100 font-semibold">
+                <!-- Rendered Dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- VIEW 5: ANALYTICS & PERFORMANCE                      -->
+      <!-- ==================================================== -->
+      <section id="view-reports" class="h-full overflow-y-auto hidden pr-1 space-y-4">
+        <div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Performance & Category Analytics</h2>
+          <p class="text-xs text-slate-400 font-medium">Deep insights on revenue distribution, margins, and best-sellers</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">All-Time Revenue</span>
+            <h4 id="report-alltime-rev" class="text-2xl font-black text-slate-900 mt-1">Rs. 0.00</h4>
+          </div>
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">All-Time Gross Profit</span>
+            <h4 id="report-alltime-profit" class="text-2xl font-black text-emerald-600 mt-1">Rs. 0.00</h4>
+          </div>
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-soft">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Average Sale Basket</span>
+            <h4 id="report-avg-sale" class="text-2xl font-black text-brand-600 mt-1">Rs. 0.00</h4>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          <!-- Category Sales Breakdown -->
+          <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-soft">
+            <h3 class="font-extrabold text-sm text-slate-900 mb-4">Sales Distribution by Category</h3>
+            <div id="report-category-list" class="space-y-3.5">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Slow Movers -->
+          <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-soft">
+            <h3 class="font-extrabold text-sm text-slate-900 mb-4">Slow-Moving Inventory Items</h3>
+            <div id="report-slow-movers" class="divide-y divide-slate-100 text-xs">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- VIEW 6: SETTINGS & STORAGE MANAGEMENT                -->
+      <!-- ==================================================== -->
+      <section id="view-settings" class="h-full overflow-y-auto hidden pr-1 space-y-4">
+        <div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Settings & Computer Storage</h2>
+          <p class="text-xs text-slate-400 font-medium">Configure store info, thermal receipt printer size, and inspect data.json</p>
+        </div>
+
+        <!-- Storage Status Card -->
+        <div class="p-5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M10 11h4"/></svg>
+            </span>
+            <div>
+              <h3 class="font-extrabold text-sm text-emerald-950">Active Physical File: data.json</h3>
+              <p id="settings-storage-desc" class="text-xs text-emerald-700">All products and sales are safely saved directly inside <code class="font-mono bg-white px-2 py-0.5 rounded border border-emerald-300">data.json</code></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="storage.forceReloadFromFile()" class="px-4 py-2 rounded-2xl border border-emerald-300 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition">
+              Reload File
+            </button>
+            <button onclick="storage.syncToServer(true)" class="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition">
+              Force Save Now
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Company & Receipt Form -->
+          <div class="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-soft space-y-4">
+            <h3 class="font-extrabold text-sm text-slate-900 pb-2 border-b border-slate-100">Store Profile & Receipt Format</h3>
+            
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block font-bold mb-1 text-slate-700">Shop / Company Name</label>
+                <input type="text" id="setting-company-name" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700">Phone Number</label>
+                  <input type="text" id="setting-phone" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700">Currency Symbol</label>
+                  <input type="text" id="setting-currency" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold mb-1 text-slate-700">Address / Location</label>
+                <input type="text" id="setting-address" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700">Tax (%)</label>
+                  <input type="number" id="setting-tax" min="0" max="100" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700">Receipt Paper Size</label>
+                  <select id="setting-receipt-size" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-bold">
+                    <option value="58mm">58mm Thermal (Small POS)</option>
+                    <option value="80mm">80mm Thermal (Standard POS)</option>
+                    <option value="A4">A4 Full Sheet Paper</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold mb-1 text-slate-700">Invoice Prefix</label>
+                <input type="text" id="setting-prefix" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold">
+              </div>
+
+              <div>
+                <label class="block font-bold mb-1 text-slate-700">Receipt Footer Note</label>
+                <input type="text" id="setting-footer" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold">
+              </div>
+
+              <button onclick="settingsManager.saveCompanySettings()" class="w-full py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs shadow-brand transition">
+                Save Store Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Catalog Re-population & JSON Backup -->
+          <div class="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-soft space-y-4">
+            <h3 class="font-extrabold text-sm text-slate-900 pb-2 border-b border-slate-100">Data Management & Catalog Reset</h3>
+
+            <div class="space-y-3 text-xs">
+              <!-- Load Full Sri Lankan Grocery Catalog -->
+              <div class="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/80 flex items-center justify-between">
+                <div>
+                  <p class="font-extrabold text-brand-900">Load Sri Lankan Grocery Catalog (83 Items)</p>
+                  <p class="text-brand-700/80 text-[11px] mt-0.5">Rice, Dhal, Sugar, Flour, Milk, Spices, Biscuits & Essentials</p>
+                </div>
+                <button onclick="dataManager.loadFullGroceryCatalog()" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition">
+                  Load Catalog
+                </button>
+              </div>
+
+              <!-- Export Backup -->
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p class="font-bold text-slate-900">Download Full JSON Backup</p>
+                  <p class="text-slate-500 text-[11px]">Save backup copy to desktop or pen drive</p>
+                </div>
+                <button onclick="dataManager.exportFullBackup()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition">
+                  Export JSON
+                </button>
+              </div>
+
+              <!-- Restore Backup -->
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <p class="font-bold text-slate-900">Restore from JSON File</p>
+                <input type="file" id="backup-file-input" accept=".json" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100">
+                <button onclick="dataManager.importBackupFile()" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
+                  Upload & Restore
+                </button>
+              </div>
+
+              <!-- Factory Reset -->
+              <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+                <p class="font-bold text-rose-700">Factory Reset</p>
+                <p class="text-rose-600 text-[11px]">Reset catalog back to initial defaults.</p>
+                <button onclick="dataManager.factoryReset()" class="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition">
+                  Reset Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ADD / EDIT PRODUCT                                -->
+  <!-- ======================================================== -->
+  <div id="modal-product" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 id="modal-product-title" class="font-extrabold text-base text-slate-900">Add New Product</h3>
+          <p class="text-[11px] text-slate-400 font-medium">Enter product details and retail selling price</p>
+        </div>
+        <button onclick="productManager.closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold">&times;</button>
+      </div>
+
+      <form id="product-form" onsubmit="productManager.saveForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="prod-form-id">
+
+        <div>
+          <label class="block font-bold mb-1 text-slate-700">Product Name *</label>
+          <input type="text" id="prod-form-name" required placeholder="e.g. Keeri Samba Rice 1kg" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Category *</label>
+            <input type="text" id="prod-form-category" list="category-datalist" required placeholder="Rice & Grains" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <datalist id="category-datalist"></datalist>
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block font-bold text-slate-700">Barcode / SKU</label>
+              <button type="button" onclick="productManager.generateBarcode()" class="text-[10px] font-bold text-brand-600 hover:underline">Auto Gen</button>
+            </div>
+            <input type="text" id="prod-form-barcode" placeholder="Scan or type barcode" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Cost Price (Rs.)</label>
+            <input type="number" step="0.01" min="0" id="prod-form-cost" placeholder="0.00" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Selling Price (Rs.) *</label>
+            <input type="number" step="0.01" min="0" id="prod-form-price" required placeholder="0.00" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Stock Quantity *</label>
+            <input type="number" min="0" id="prod-form-stock" required value="20" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Low Stock Alert Level</label>
+            <input type="number" min="0" id="prod-form-low-alert" value="5" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3">
+          <button type="button" onclick="productManager.closeModal()" class="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-brand transition">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ADD STOCK / RESTOCK                               -->
+  <!-- ======================================================== -->
+  <div id="modal-stock-in" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <span class="p-1 rounded-xl bg-emerald-100 text-emerald-700">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            </span>
+            Add Stock (Restock)
+          </h3>
+          <p class="text-[11px] text-slate-400 font-medium">Increase inventory count when shipment arrives</p>
+        </div>
+        <button onclick="stockManager.closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold">&times;</button>
+      </div>
+
+      <!-- Select product dropdown if opened from Quick Restock -->
+      <div id="stock-in-select-container" class="space-y-1 text-xs hidden">
+        <label class="block font-bold text-slate-700">Select Product to Restock</label>
+        <select id="stock-in-product-select" onchange="stockManager.onProductSelected(this.value)" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-900">
+          <!-- Dynamically populated -->
+        </select>
+      </div>
+
+      <!-- Selected Product Info Card -->
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+        <div>
+          <h4 id="stock-in-prod-name" class="font-extrabold text-sm text-slate-900">---</h4>
+          <p id="stock-in-prod-meta" class="text-[11px] text-slate-400 font-semibold">---</p>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] uppercase font-bold text-slate-400">Current Stock</span>
+          <p id="stock-in-current-stock" class="text-2xl font-black text-brand-600">0</p>
+        </div>
+      </div>
+
+      <form id="stock-in-form" onsubmit="stockManager.saveStockIn(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-800 mb-1">Quantity to Add (+) *</label>
+          <input type="number" min="1" id="stock-in-qty" required placeholder="Enter arrived quantity (e.g. 25)" oninput="stockManager.handleQtyInput()" class="w-full px-4 py-2.5 text-sm font-black rounded-2xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+
+        <!-- Calculated preview -->
+        <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs font-bold text-emerald-800">
+          <span>New Total Stock Preview:</span>
+          <span id="stock-in-new-total" class="font-black text-base text-emerald-700">0 Units</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Update Cost (Optional)</label>
+            <input type="number" step="0.01" min="0" id="stock-in-cost" placeholder="New cost price" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-slate-700">Update Price (Optional)</label>
+            <input type="number" step="0.01" min="0" id="stock-in-price" placeholder="New selling price" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-semibold">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3">
+          <button type="button" onclick="stockManager.closeModal()" class="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-sm transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Update Inventory Stock
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: RECEIPT PREVIEW & PRINT                           -->
+  <!-- ======================================================== -->
+  <div id="modal-receipt" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 rounded-3xl max-w-sm sm:max-w-md w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <!-- Receipt Action Bar -->
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between receipt-actions">
+        <div>
+          <h4 class="font-extrabold text-sm">Receipt / Bill Preview</h4>
+          <p class="text-[11px] text-slate-400 font-medium">Ready for thermal printing</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="receiptRenderer.triggerPrint()" class="px-4 py-2 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-brand transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Print Bill (Ctrl+P)
+          </button>
+          <button onclick="receiptRenderer.closeModal()" class="px-3 py-2 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">Done</button>
+          <button onclick="receiptRenderer.closeModal()" class="w-7 h-7 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-500 flex items-center justify-center font-bold">&times;</button>
+        </div>
+      </div>
+
+      <!-- Printable Receipt View -->
+      <div class="flex-1 overflow-y-auto p-6 bg-white font-mono text-xs" id="receipt-print-area" data-size="80mm">
+        <!-- Rendered Dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- APPLICATION LOGIC & STORAGE SYSTEM                       -->
+  <!-- ======================================================== -->
+  <script>
+    /**
+     * LankaPOS - Offline POS & Inventory Engine
+     * Styled to match modern Dribbble Coursie UI with Real-Time Auto-Update & data.json storage
+     */
+
+    const MASTER_GROCERY_CATALOG = [
+  {
+    "id": "gr_rice_01",
+    "name": "Keeri Samba Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001001",
+    "costPrice": 290,
+    "sellingPrice": 340,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_02",
+    "name": "Keeri Samba Rice 5kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001002",
+    "costPrice": 1420,
+    "sellingPrice": 1650,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_rice_03",
+    "name": "White Raw Rice (Kekulu) 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001003",
+    "costPrice": 195,
+    "sellingPrice": 220,
+    "stock": 60,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_04",
+    "name": "White Raw Rice (Kekulu) 5kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001004",
+    "costPrice": 950,
+    "sellingPrice": 1080,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_rice_05",
+    "name": "Red Raw Rice (Kekulu) 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001005",
+    "costPrice": 190,
+    "sellingPrice": 215,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_06",
+    "name": "Red Raw Rice (Kekulu) 5kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001006",
+    "costPrice": 930,
+    "sellingPrice": 1050,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_rice_07",
+    "name": "White Nadu Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001007",
+    "costPrice": 200,
+    "sellingPrice": 230,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_08",
+    "name": "Red Nadu Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001008",
+    "costPrice": 205,
+    "sellingPrice": 235,
+    "stock": 35,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_09",
+    "name": "Samba Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001009",
+    "costPrice": 220,
+    "sellingPrice": 250,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_rice_10",
+    "name": "Basmati Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001010",
+    "costPrice": 450,
+    "sellingPrice": 550,
+    "stock": 30,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_rice_11",
+    "name": "Suwandel Traditional Rice 1kg",
+    "category": "Rice & Grains",
+    "barcode": "4792001011",
+    "costPrice": 420,
+    "sellingPrice": 520,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_rice_12",
+    "name": "Kurakkan Flour (Finger Millet) 500g",
+    "category": "Flours & Grains",
+    "barcode": "4792001012",
+    "costPrice": 240,
+    "sellingPrice": 310,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_rice_13",
+    "name": "White Rice Flour (Haal Piti) 1kg",
+    "category": "Flours & Grains",
+    "barcode": "4792001013",
+    "costPrice": 210,
+    "sellingPrice": 260,
+    "stock": 30,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_pulse_01",
+    "name": "Red Dhal (Mysore Parippu) 1kg",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002001",
+    "costPrice": 295,
+    "sellingPrice": 330,
+    "stock": 80,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_pulse_02",
+    "name": "Red Dhal (Mysore Parippu) 500g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002002",
+    "costPrice": 150,
+    "sellingPrice": 170,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_pulse_03",
+    "name": "White Sugar 1kg",
+    "category": "Sugar & Sweeteners",
+    "barcode": "4792002003",
+    "costPrice": 240,
+    "sellingPrice": 275,
+    "stock": 100,
+    "lowStockAlert": 20
+  },
+  {
+    "id": "gr_pulse_04",
+    "name": "Brown Sugar 1kg",
+    "category": "Sugar & Sweeteners",
+    "barcode": "4792002004",
+    "costPrice": 320,
+    "sellingPrice": 380,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_pulse_05",
+    "name": "Icing Sugar 500g",
+    "category": "Sugar & Sweeteners",
+    "barcode": "4792002005",
+    "costPrice": 260,
+    "sellingPrice": 330,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_pulse_06",
+    "name": "Prima All Purpose Wheat Flour 1kg",
+    "category": "Flours & Grains",
+    "barcode": "4792002006",
+    "costPrice": 180,
+    "sellingPrice": 210,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_pulse_07",
+    "name": "Prima Special Self Raising Flour 1kg",
+    "category": "Flours & Grains",
+    "barcode": "4792002007",
+    "costPrice": 230,
+    "sellingPrice": 280,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_pulse_08",
+    "name": "Table Salt Free Flowing 1kg",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002008",
+    "costPrice": 80,
+    "sellingPrice": 110,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_pulse_09",
+    "name": "Crystal Sea Salt (Keta Lunu) 1kg",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002009",
+    "costPrice": 65,
+    "sellingPrice": 90,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_pulse_10",
+    "name": "Chickpeas (Kadala) 500g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002010",
+    "costPrice": 240,
+    "sellingPrice": 290,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_pulse_11",
+    "name": "Green Gram (Mung Eta) 500g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002011",
+    "costPrice": 280,
+    "sellingPrice": 340,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_pulse_12",
+    "name": "Cowpea (Kowpi) 500g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002012",
+    "costPrice": 250,
+    "sellingPrice": 310,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_pulse_13",
+    "name": "Soya Meat Curry Flavor 90g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002013",
+    "costPrice": 95,
+    "sellingPrice": 125,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_pulse_14",
+    "name": "Soya Meat Chicken Flavor 90g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002014",
+    "costPrice": 95,
+    "sellingPrice": 125,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_pulse_15",
+    "name": "Soya Meat Mutton Flavor 90g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002015",
+    "costPrice": 95,
+    "sellingPrice": 125,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_pulse_16",
+    "name": "Soya Meat Polos Flavor 90g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002016",
+    "costPrice": 95,
+    "sellingPrice": 125,
+    "stock": 30,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_pulse_17",
+    "name": "Sago Pearls (Saabu) 250g",
+    "category": "Pulses & Essentials",
+    "barcode": "4792002017",
+    "costPrice": 140,
+    "sellingPrice": 190,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_01",
+    "name": "Anchor Full Cream Milk Powder 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003001",
+    "costPrice": 980,
+    "sellingPrice": 1080,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_dairy_02",
+    "name": "Anchor Full Cream Milk Powder 1kg",
+    "category": "Dairy & Milk",
+    "barcode": "4792003002",
+    "costPrice": 2410,
+    "sellingPrice": 2650,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_dairy_03",
+    "name": "Maliban Full Cream Milk Powder 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003003",
+    "costPrice": 940,
+    "sellingPrice": 1040,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_dairy_04",
+    "name": "Pelwatte Full Cream Milk Powder 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003004",
+    "costPrice": 920,
+    "sellingPrice": 1020,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_dairy_05",
+    "name": "Highland Full Cream Milk Powder 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003005",
+    "costPrice": 930,
+    "sellingPrice": 1030,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_dairy_06",
+    "name": "Ratthi Full Cream Milk Powder 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003006",
+    "costPrice": 950,
+    "sellingPrice": 1050,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_07",
+    "name": "Nestomalt Malted Drink 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003007",
+    "costPrice": 690,
+    "sellingPrice": 780,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_dairy_08",
+    "name": "Milo Activ-Go Chocolate Drink 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003008",
+    "costPrice": 780,
+    "sellingPrice": 890,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_dairy_09",
+    "name": "Viva Malted Food Drink 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003009",
+    "costPrice": 680,
+    "sellingPrice": 790,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_10",
+    "name": "Horlicks Malted Drink 400g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003010",
+    "costPrice": 890,
+    "sellingPrice": 1020,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_dairy_11",
+    "name": "Highland Fresh Milk 1L",
+    "category": "Dairy & Milk",
+    "barcode": "4792003011",
+    "costPrice": 420,
+    "sellingPrice": 490,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_dairy_12",
+    "name": "Kotmale Fresh Milk 1L",
+    "category": "Dairy & Milk",
+    "barcode": "4792003012",
+    "costPrice": 410,
+    "sellingPrice": 480,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_13",
+    "name": "Highland Sweetened Fresh Milk 180ml",
+    "category": "Dairy & Milk",
+    "barcode": "4792003013",
+    "costPrice": 110,
+    "sellingPrice": 140,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_dairy_14",
+    "name": "Kotmale Salted Butter 200g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003014",
+    "costPrice": 650,
+    "sellingPrice": 780,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_15",
+    "name": "Highland Salted Butter 200g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003015",
+    "costPrice": 660,
+    "sellingPrice": 790,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_16",
+    "name": "Astra Fat Spread 250g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003016",
+    "costPrice": 320,
+    "sellingPrice": 390,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_dairy_17",
+    "name": "Astra Fat Spread 500g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003017",
+    "costPrice": 610,
+    "sellingPrice": 740,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_18",
+    "name": "Kotmale Cheddar Cheese 200g",
+    "category": "Dairy & Milk",
+    "barcode": "4792003018",
+    "costPrice": 820,
+    "sellingPrice": 960,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_dairy_19",
+    "name": "Happy Cow Cheese 8 Portions",
+    "category": "Dairy & Milk",
+    "barcode": "4792003019",
+    "costPrice": 560,
+    "sellingPrice": 670,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_dairy_20",
+    "name": "Highland Curd (Meekiri) Clay Pot 1L",
+    "category": "Dairy & Milk",
+    "barcode": "4792003020",
+    "costPrice": 450,
+    "sellingPrice": 540,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_dairy_21",
+    "name": "Highland Sweetened Yoghurt Cup",
+    "category": "Dairy & Milk",
+    "barcode": "4792003021",
+    "costPrice": 65,
+    "sellingPrice": 80,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_dairy_22",
+    "name": "Kotmale Vanilla Yoghurt Cup",
+    "category": "Dairy & Milk",
+    "barcode": "4792003022",
+    "costPrice": 65,
+    "sellingPrice": 80,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_spice_01",
+    "name": "Roasted Curry Powder (Thunapaha) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004001",
+    "costPrice": 140,
+    "sellingPrice": 180,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_spice_02",
+    "name": "Roasted Curry Powder (Thunapaha) 250g",
+    "category": "Spices & Curry",
+    "barcode": "4792004002",
+    "costPrice": 320,
+    "sellingPrice": 410,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_03",
+    "name": "Raw Curry Powder (Amu Thunapaha) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004003",
+    "costPrice": 130,
+    "sellingPrice": 170,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_spice_04",
+    "name": "Raw Curry Powder (Amu Thunapaha) 250g",
+    "category": "Spices & Curry",
+    "barcode": "4792004004",
+    "costPrice": 300,
+    "sellingPrice": 390,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_05",
+    "name": "Chilli Powder (Miris Kudu) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004005",
+    "costPrice": 160,
+    "sellingPrice": 210,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_spice_06",
+    "name": "Chilli Powder (Miris Kudu) 250g",
+    "category": "Spices & Curry",
+    "barcode": "4792004006",
+    "costPrice": 380,
+    "sellingPrice": 490,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_07",
+    "name": "Chilli Pieces (Keli Miris) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004007",
+    "costPrice": 170,
+    "sellingPrice": 220,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_spice_08",
+    "name": "Chilli Pieces (Keli Miris) 250g",
+    "category": "Spices & Curry",
+    "barcode": "4792004008",
+    "costPrice": 400,
+    "sellingPrice": 510,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_09",
+    "name": "Turmeric Powder (Kaha Kudu) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004009",
+    "costPrice": 180,
+    "sellingPrice": 240,
+    "stock": 35,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_10",
+    "name": "Black Pepper Powder (Gammiris) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004010",
+    "costPrice": 260,
+    "sellingPrice": 340,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_11",
+    "name": "Black Pepper Seeds (Gammiris Eta) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004011",
+    "costPrice": 250,
+    "sellingPrice": 330,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_12",
+    "name": "Mustard Seeds (Aba) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004012",
+    "costPrice": 90,
+    "sellingPrice": 130,
+    "stock": 35,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_13",
+    "name": "Cumin Seeds (Suduru) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004013",
+    "costPrice": 190,
+    "sellingPrice": 250,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_14",
+    "name": "Sweet Cumin (Maduru) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004014",
+    "costPrice": 160,
+    "sellingPrice": 220,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_15",
+    "name": "Fenugreek Seeds (Uluhal) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004015",
+    "costPrice": 110,
+    "sellingPrice": 150,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_16",
+    "name": "Coriander Seeds (Koththamalli) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004016",
+    "costPrice": 120,
+    "sellingPrice": 160,
+    "stock": 30,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_17",
+    "name": "Cardamom (Enasal) 50g",
+    "category": "Spices & Curry",
+    "barcode": "4792004017",
+    "costPrice": 620,
+    "sellingPrice": 890,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_spice_18",
+    "name": "Cloves (Karabu Nati) 50g",
+    "category": "Spices & Curry",
+    "barcode": "4792004018",
+    "costPrice": 380,
+    "sellingPrice": 520,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_spice_19",
+    "name": "Cinnamon Sticks (Kurundu) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004019",
+    "costPrice": 340,
+    "sellingPrice": 460,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_20",
+    "name": "Goraka Dried (Garcinia) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004020",
+    "costPrice": 180,
+    "sellingPrice": 250,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_21",
+    "name": "Tamarind (Siyambala) 200g",
+    "category": "Spices & Curry",
+    "barcode": "4792004021",
+    "costPrice": 160,
+    "sellingPrice": 220,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_spice_22",
+    "name": "Maldive Fish Chips (Umbalakada) 100g",
+    "category": "Spices & Curry",
+    "barcode": "4792004022",
+    "costPrice": 520,
+    "sellingPrice": 690,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_spice_23",
+    "name": "Knorr Chicken Soup Cubes (Box of 12)",
+    "category": "Spices & Curry",
+    "barcode": "4792004023",
+    "costPrice": 340,
+    "sellingPrice": 420,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_24",
+    "name": "Maggi Chicken Flavor Stock Cubes",
+    "category": "Spices & Curry",
+    "barcode": "4792004024",
+    "costPrice": 320,
+    "sellingPrice": 390,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_spice_25",
+    "name": "Maggi Coconut Milk Powder 150g",
+    "category": "Kitchen Essentials",
+    "barcode": "4792004025",
+    "costPrice": 280,
+    "sellingPrice": 340,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_spice_26",
+    "name": "Maggi Coconut Milk Powder 300g",
+    "category": "Kitchen Essentials",
+    "barcode": "4792004026",
+    "costPrice": 520,
+    "sellingPrice": 620,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_oil_01",
+    "name": "Pure White Coconut Oil 500ml",
+    "category": "Cooking Oils",
+    "barcode": "4792005001",
+    "costPrice": 340,
+    "sellingPrice": 420,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_oil_02",
+    "name": "Pure White Coconut Oil 1L Bottle",
+    "category": "Cooking Oils",
+    "barcode": "4792005002",
+    "costPrice": 640,
+    "sellingPrice": 780,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_oil_03",
+    "name": "Fortune Vegetable Cooking Oil 1L",
+    "category": "Cooking Oils",
+    "barcode": "4792005003",
+    "costPrice": 550,
+    "sellingPrice": 670,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_oil_04",
+    "name": "Fortune Vegetable Cooking Oil 2L",
+    "category": "Cooking Oils",
+    "barcode": "4792005004",
+    "costPrice": 1080,
+    "sellingPrice": 1290,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_oil_05",
+    "name": "Marina Coconut Oil 1L Pouch",
+    "category": "Cooking Oils",
+    "barcode": "4792005005",
+    "costPrice": 620,
+    "sellingPrice": 750,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_oil_06",
+    "name": "Pure Cow Ghee (Elagithela) 200ml",
+    "category": "Cooking Oils",
+    "barcode": "4792005006",
+    "costPrice": 680,
+    "sellingPrice": 840,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_tea_01",
+    "name": "Watawala Tea 200g Pack",
+    "category": "Tea & Coffee",
+    "barcode": "4792006001",
+    "costPrice": 380,
+    "sellingPrice": 460,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_tea_02",
+    "name": "Watawala Tea 400g Pack",
+    "category": "Tea & Coffee",
+    "barcode": "4792006002",
+    "costPrice": 720,
+    "sellingPrice": 860,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_tea_03",
+    "name": "Dilmah Premium Ceylon Tea 200g",
+    "category": "Tea & Coffee",
+    "barcode": "4792006003",
+    "costPrice": 440,
+    "sellingPrice": 540,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_tea_04",
+    "name": "Dilmah Green Tea (25 Tea Bags)",
+    "category": "Tea & Coffee",
+    "barcode": "4792006004",
+    "costPrice": 490,
+    "sellingPrice": 620,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_tea_05",
+    "name": "Zesta BOPF Pure Ceylon Tea 200g",
+    "category": "Tea & Coffee",
+    "barcode": "4792006005",
+    "costPrice": 410,
+    "sellingPrice": 500,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_tea_06",
+    "name": "Harischandra Pure Ground Coffee 200g",
+    "category": "Tea & Coffee",
+    "barcode": "4792006006",
+    "costPrice": 390,
+    "sellingPrice": 480,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_tea_07",
+    "name": "Nescafe Classic Instant Coffee 50g Jar",
+    "category": "Tea & Coffee",
+    "barcode": "4792006007",
+    "costPrice": 650,
+    "sellingPrice": 780,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_tea_08",
+    "name": "Nescafe 3-in-1 Coffee Mix (Pack of 5)",
+    "category": "Tea & Coffee",
+    "barcode": "4792006008",
+    "costPrice": 380,
+    "sellingPrice": 460,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_inst_01",
+    "name": "Prima Stella Instant Noodles 400g",
+    "category": "Instant Food",
+    "barcode": "4792007001",
+    "costPrice": 260,
+    "sellingPrice": 320,
+    "stock": 50,
+    "lowStockAlert": 12
+  },
+  {
+    "id": "gr_inst_02",
+    "name": "Prima Kottu Mee Hot & Spicy 80g",
+    "category": "Instant Food",
+    "barcode": "4792007002",
+    "costPrice": 110,
+    "sellingPrice": 140,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_inst_03",
+    "name": "Maggi Chicken 2-Minute Noodles 73g",
+    "category": "Instant Food",
+    "barcode": "4792007003",
+    "costPrice": 100,
+    "sellingPrice": 130,
+    "stock": 70,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_inst_04",
+    "name": "Maggi Curry 2-Minute Noodles 73g",
+    "category": "Instant Food",
+    "barcode": "4792007004",
+    "costPrice": 100,
+    "sellingPrice": 130,
+    "stock": 70,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_inst_05",
+    "name": "Maggi Daiya Noodles 80g",
+    "category": "Instant Food",
+    "barcode": "4792007005",
+    "costPrice": 120,
+    "sellingPrice": 150,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_inst_06",
+    "name": "Roza Elbow Macaroni Pasta 400g",
+    "category": "Instant Food",
+    "barcode": "4792007006",
+    "costPrice": 250,
+    "sellingPrice": 310,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_inst_07",
+    "name": "Roza Spaghetti Pasta 400g",
+    "category": "Instant Food",
+    "barcode": "4792007007",
+    "costPrice": 270,
+    "sellingPrice": 330,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_inst_08",
+    "name": "Canned Mackerel (Salmon) 425g Large",
+    "category": "Canned Goods",
+    "barcode": "4792007008",
+    "costPrice": 480,
+    "sellingPrice": 590,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_inst_09",
+    "name": "Canned Mackerel (Salmon) 155g Small",
+    "category": "Canned Goods",
+    "barcode": "4792007009",
+    "costPrice": 240,
+    "sellingPrice": 300,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_inst_10",
+    "name": "Canned Tuna Flakes in Oil 185g",
+    "category": "Canned Goods",
+    "barcode": "4792007010",
+    "costPrice": 390,
+    "sellingPrice": 490,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_inst_11",
+    "name": "Kist Canned Baked Beans 400g",
+    "category": "Canned Goods",
+    "barcode": "4792007011",
+    "costPrice": 350,
+    "sellingPrice": 440,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_inst_12",
+    "name": "Samaposha Pre-cooked Cereal 200g",
+    "category": "Instant Food",
+    "barcode": "4792007012",
+    "costPrice": 180,
+    "sellingPrice": 230,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_inst_13",
+    "name": "Samaposha Pre-cooked Cereal 500g",
+    "category": "Instant Food",
+    "barcode": "4792007013",
+    "costPrice": 410,
+    "sellingPrice": 510,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_inst_14",
+    "name": "Sera Canned Sweet Corn 400g",
+    "category": "Canned Goods",
+    "barcode": "4792007014",
+    "costPrice": 320,
+    "sellingPrice": 410,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_sauce_01",
+    "name": "MD Tomato Sauce 400g",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008001",
+    "costPrice": 340,
+    "sellingPrice": 420,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_sauce_02",
+    "name": "MD Chilli Sauce 400g",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008002",
+    "costPrice": 320,
+    "sellingPrice": 390,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_sauce_03",
+    "name": "Kist Mixed Fruit Jam 500g Glass Jar",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008003",
+    "costPrice": 420,
+    "sellingPrice": 530,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_sauce_04",
+    "name": "Kist Strawberry Jam 500g",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008004",
+    "costPrice": 450,
+    "sellingPrice": 560,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_sauce_05",
+    "name": "MD Woodapple Jam 500g",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008005",
+    "costPrice": 390,
+    "sellingPrice": 480,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_sauce_06",
+    "name": "Edinborough Dark Soya Sauce 350ml",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008006",
+    "costPrice": 280,
+    "sellingPrice": 360,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_sauce_07",
+    "name": "Edinborough Artificial White Vinegar 350ml",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008007",
+    "costPrice": 110,
+    "sellingPrice": 150,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_sauce_08",
+    "name": "Kist Pure Kithul Treacle (Pani) 350ml",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008008",
+    "costPrice": 650,
+    "sellingPrice": 820,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_sauce_09",
+    "name": "Kist Real Mayonnaise 250g Jar",
+    "category": "Sauces & Condiments",
+    "barcode": "4792008009",
+    "costPrice": 390,
+    "sellingPrice": 490,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_bisc_01",
+    "name": "Munchee Super Cream Cracker 500g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009001",
+    "costPrice": 340,
+    "sellingPrice": 410,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bisc_02",
+    "name": "Munchee Super Cream Cracker 125g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009002",
+    "costPrice": 95,
+    "sellingPrice": 120,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_bisc_03",
+    "name": "Munchee Chocolate Puff 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009003",
+    "costPrice": 210,
+    "sellingPrice": 260,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bisc_04",
+    "name": "Munchee Lemon Puff 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009004",
+    "costPrice": 200,
+    "sellingPrice": 250,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bisc_05",
+    "name": "Munchee Tikiri Marie 350g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009005",
+    "costPrice": 230,
+    "sellingPrice": 290,
+    "stock": 50,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bisc_06",
+    "name": "Munchee Ginger Biscuits 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009006",
+    "costPrice": 180,
+    "sellingPrice": 230,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bisc_07",
+    "name": "Munchee Hawaiian Cookies 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009007",
+    "costPrice": 210,
+    "sellingPrice": 260,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bisc_08",
+    "name": "Munchee Nice Coconut Biscuits 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009008",
+    "costPrice": 160,
+    "sellingPrice": 200,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bisc_09",
+    "name": "Maliban Gold Marie 300g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009009",
+    "costPrice": 220,
+    "sellingPrice": 280,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bisc_10",
+    "name": "Maliban Smart Cream Cracker 500g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009010",
+    "costPrice": 340,
+    "sellingPrice": 410,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bisc_11",
+    "name": "Maliban Lemon Puff 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009011",
+    "costPrice": 200,
+    "sellingPrice": 250,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bisc_12",
+    "name": "Maliban Real Chocolate Cream 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009012",
+    "costPrice": 210,
+    "sellingPrice": 260,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bisc_13",
+    "name": "Maliban Real Custard Cream 200g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009013",
+    "costPrice": 200,
+    "sellingPrice": 250,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bisc_14",
+    "name": "Tiara Layer Cake Vanilla 180g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009014",
+    "costPrice": 220,
+    "sellingPrice": 280,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bisc_15",
+    "name": "Tiara Swiss Roll Chocolate 150g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009015",
+    "costPrice": 240,
+    "sellingPrice": 310,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bisc_16",
+    "name": "Roasted Salted Cashew Nuts 100g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009016",
+    "costPrice": 550,
+    "sellingPrice": 780,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bisc_17",
+    "name": "Roasted Salted Peanuts (Rata Kaju) 100g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009017",
+    "costPrice": 140,
+    "sellingPrice": 190,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bisc_18",
+    "name": "Fried Cassava Chips Chilli 100g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009018",
+    "costPrice": 150,
+    "sellingPrice": 200,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bisc_19",
+    "name": "Sri Lankan Spicy Mixture 100g",
+    "category": "Biscuits & Bakery",
+    "barcode": "4792009019",
+    "costPrice": 120,
+    "sellingPrice": 160,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bev_01",
+    "name": "Elephant House Cream Soda 1.5L",
+    "category": "Beverages",
+    "barcode": "4792010001",
+    "costPrice": 310,
+    "sellingPrice": 380,
+    "stock": 30,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_bev_02",
+    "name": "Elephant House Cream Soda 400ml",
+    "category": "Beverages",
+    "barcode": "4792010002",
+    "costPrice": 110,
+    "sellingPrice": 140,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bev_03",
+    "name": "Elephant House Necto 1.5L",
+    "category": "Beverages",
+    "barcode": "4792010003",
+    "costPrice": 310,
+    "sellingPrice": 380,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bev_04",
+    "name": "Elephant House Ginger Beer (EGB) 1.5L",
+    "category": "Beverages",
+    "barcode": "4792010004",
+    "costPrice": 320,
+    "sellingPrice": 390,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bev_05",
+    "name": "Elephant House EGB 400ml",
+    "category": "Beverages",
+    "barcode": "4792010005",
+    "costPrice": 120,
+    "sellingPrice": 150,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bev_06",
+    "name": "Coca-Cola 1.5L Bottle",
+    "category": "Beverages",
+    "barcode": "4792010006",
+    "costPrice": 330,
+    "sellingPrice": 400,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bev_07",
+    "name": "Coca-Cola 400ml Pet Bottle",
+    "category": "Beverages",
+    "barcode": "4792010007",
+    "costPrice": 130,
+    "sellingPrice": 160,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bev_08",
+    "name": "Sprite 1.5L Bottle",
+    "category": "Beverages",
+    "barcode": "4792010008",
+    "costPrice": 330,
+    "sellingPrice": 400,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_bev_09",
+    "name": "Fanta Orange 1.5L Bottle",
+    "category": "Beverages",
+    "barcode": "4792010009",
+    "costPrice": 330,
+    "sellingPrice": 400,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bev_10",
+    "name": "Pepsi 1.5L Bottle",
+    "category": "Beverages",
+    "barcode": "4792010010",
+    "costPrice": 310,
+    "sellingPrice": 380,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bev_11",
+    "name": "Sunquick Orange Fruit Cordial 330ml",
+    "category": "Beverages",
+    "barcode": "4792010011",
+    "costPrice": 650,
+    "sellingPrice": 790,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_bev_12",
+    "name": "Sunquick Orange Fruit Cordial 840ml",
+    "category": "Beverages",
+    "barcode": "4792010012",
+    "costPrice": 1420,
+    "sellingPrice": 1680,
+    "stock": 15,
+    "lowStockAlert": 3
+  },
+  {
+    "id": "gr_bev_13",
+    "name": "Smak Mixed Fruit Nectar Drink 200ml",
+    "category": "Beverages",
+    "barcode": "4792010013",
+    "costPrice": 90,
+    "sellingPrice": 120,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_bev_14",
+    "name": "Milo Ready-to-Drink Pack 180ml",
+    "category": "Beverages",
+    "barcode": "4792010014",
+    "costPrice": 110,
+    "sellingPrice": 140,
+    "stock": 50,
+    "lowStockAlert": 12
+  },
+  {
+    "id": "gr_bev_15",
+    "name": "Knuckles Pure Mineral Water 500ml",
+    "category": "Beverages",
+    "barcode": "4792010015",
+    "costPrice": 50,
+    "sellingPrice": 70,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_bev_16",
+    "name": "Knuckles Pure Mineral Water 1.5L",
+    "category": "Beverages",
+    "barcode": "4792010016",
+    "costPrice": 90,
+    "sellingPrice": 130,
+    "stock": 50,
+    "lowStockAlert": 12
+  },
+  {
+    "id": "gr_bev_17",
+    "name": "Knuckles Pure Mineral Water 5L Can",
+    "category": "Beverages",
+    "barcode": "4792010017",
+    "costPrice": 240,
+    "sellingPrice": 320,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_bev_18",
+    "name": "Elephant House Plain Soda 400ml",
+    "category": "Beverages",
+    "barcode": "4792010018",
+    "costPrice": 85,
+    "sellingPrice": 110,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_clean_01",
+    "name": "Sunlight Yellow Laundry Soap 110g",
+    "category": "Household & Cleaning",
+    "barcode": "4792011001",
+    "costPrice": 110,
+    "sellingPrice": 140,
+    "stock": 80,
+    "lowStockAlert": 20
+  },
+  {
+    "id": "gr_clean_02",
+    "name": "Sunlight Care Soap Bar 110g",
+    "category": "Household & Cleaning",
+    "barcode": "4792011002",
+    "costPrice": 115,
+    "sellingPrice": 145,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_clean_03",
+    "name": "Sunlight Lemon Detergent Powder 1kg",
+    "category": "Household & Cleaning",
+    "barcode": "4792011003",
+    "costPrice": 460,
+    "sellingPrice": 560,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_clean_04",
+    "name": "Surf Excel Washing Powder 500g",
+    "category": "Household & Cleaning",
+    "barcode": "4792011004",
+    "costPrice": 310,
+    "sellingPrice": 380,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_clean_05",
+    "name": "Surf Excel Washing Powder 1kg",
+    "category": "Household & Cleaning",
+    "barcode": "4792011005",
+    "costPrice": 590,
+    "sellingPrice": 720,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_clean_06",
+    "name": "Diva Floral Detergent Powder 1kg",
+    "category": "Household & Cleaning",
+    "barcode": "4792011006",
+    "costPrice": 410,
+    "sellingPrice": 490,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_clean_07",
+    "name": "Rin Advanced Detergent Bar 125g",
+    "category": "Household & Cleaning",
+    "barcode": "4792011007",
+    "costPrice": 95,
+    "sellingPrice": 120,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_clean_08",
+    "name": "Comfort Fabric Conditioner 200ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011008",
+    "costPrice": 280,
+    "sellingPrice": 360,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_clean_09",
+    "name": "Vim Dishwash Bar 100g",
+    "category": "Household & Cleaning",
+    "barcode": "4792011009",
+    "costPrice": 75,
+    "sellingPrice": 95,
+    "stock": 70,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_clean_10",
+    "name": "Vim Liquid Dishwash 500ml Bottle",
+    "category": "Household & Cleaning",
+    "barcode": "4792011010",
+    "costPrice": 360,
+    "sellingPrice": 450,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_clean_11",
+    "name": "Harpic Power Plus Toilet Cleaner 500ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011011",
+    "costPrice": 380,
+    "sellingPrice": 470,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_clean_12",
+    "name": "Lysol Floral Floor Cleaner 500ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011012",
+    "costPrice": 390,
+    "sellingPrice": 480,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_clean_13",
+    "name": "Dettol Antiseptic Liquid 100ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011013",
+    "costPrice": 260,
+    "sellingPrice": 330,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_clean_14",
+    "name": "Dettol Antiseptic Liquid 250ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011014",
+    "costPrice": 580,
+    "sellingPrice": 720,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_clean_15",
+    "name": "Soorya Safety Matchbox (Pack of 10)",
+    "category": "Household & Cleaning",
+    "barcode": "4792011015",
+    "costPrice": 160,
+    "sellingPrice": 200,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_clean_16",
+    "name": "Tortoise Mosquito Coils (Box of 10)",
+    "category": "Household & Cleaning",
+    "barcode": "4792011016",
+    "costPrice": 140,
+    "sellingPrice": 180,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_clean_17",
+    "name": "Mortein Liquid Mosquito Vaporizer Refill",
+    "category": "Household & Cleaning",
+    "barcode": "4792011017",
+    "costPrice": 380,
+    "sellingPrice": 470,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_clean_18",
+    "name": "Glade Room Air Freshener Spray 300ml",
+    "category": "Household & Cleaning",
+    "barcode": "4792011018",
+    "costPrice": 560,
+    "sellingPrice": 690,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_care_01",
+    "name": "Lifebuoy Total Red Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012001",
+    "costPrice": 130,
+    "sellingPrice": 160,
+    "stock": 60,
+    "lowStockAlert": 15
+  },
+  {
+    "id": "gr_care_02",
+    "name": "Kohomba Herbal Soap 90g",
+    "category": "Personal Care",
+    "barcode": "4792012002",
+    "costPrice": 115,
+    "sellingPrice": 145,
+    "stock": 50,
+    "lowStockAlert": 12
+  },
+  {
+    "id": "gr_care_03",
+    "name": "Dettol Original Brown Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012003",
+    "costPrice": 150,
+    "sellingPrice": 185,
+    "stock": 50,
+    "lowStockAlert": 12
+  },
+  {
+    "id": "gr_care_04",
+    "name": "Dettol Cool Menthol Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012004",
+    "costPrice": 150,
+    "sellingPrice": 185,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_care_05",
+    "name": "Lux Velvet Touch Rose Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012005",
+    "costPrice": 140,
+    "sellingPrice": 175,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_care_06",
+    "name": "Dove White Beauty Cream Bar 100g",
+    "category": "Personal Care",
+    "barcode": "4792012006",
+    "costPrice": 280,
+    "sellingPrice": 360,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_care_07",
+    "name": "Baby Cheramy Floral Baby Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012007",
+    "costPrice": 130,
+    "sellingPrice": 160,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_care_08",
+    "name": "Pears Pure & Gentle Baby Soap 100g",
+    "category": "Personal Care",
+    "barcode": "4792012008",
+    "costPrice": 140,
+    "sellingPrice": 175,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_care_09",
+    "name": "Signal Strong Teeth Toothpaste 120g",
+    "category": "Personal Care",
+    "barcode": "4792012009",
+    "costPrice": 180,
+    "sellingPrice": 230,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_care_10",
+    "name": "Signal Strong Teeth Toothpaste 160g",
+    "category": "Personal Care",
+    "barcode": "4792012010",
+    "costPrice": 230,
+    "sellingPrice": 290,
+    "stock": 30,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_care_11",
+    "name": "Clogard Fresh Breath Toothpaste 120g",
+    "category": "Personal Care",
+    "barcode": "4792012011",
+    "costPrice": 175,
+    "sellingPrice": 225,
+    "stock": 45,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_care_12",
+    "name": "Colgate Total Anti-Bacterial 120g",
+    "category": "Personal Care",
+    "barcode": "4792012012",
+    "costPrice": 260,
+    "sellingPrice": 340,
+    "stock": 25,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_care_13",
+    "name": "Signal Soft Action Adult Toothbrush",
+    "category": "Personal Care",
+    "barcode": "4792012013",
+    "costPrice": 90,
+    "sellingPrice": 120,
+    "stock": 40,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_care_14",
+    "name": "Sunsilk Black Shine Shampoo 180ml",
+    "category": "Personal Care",
+    "barcode": "4792012014",
+    "costPrice": 390,
+    "sellingPrice": 480,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_care_15",
+    "name": "Lifebuoy Handwash Pump Liquid 200ml",
+    "category": "Personal Care",
+    "barcode": "4792012015",
+    "costPrice": 340,
+    "sellingPrice": 430,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_care_16",
+    "name": "Glow & Lovely Face Cream 50g",
+    "category": "Personal Care",
+    "barcode": "4792012016",
+    "costPrice": 290,
+    "sellingPrice": 370,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_care_17",
+    "name": "Vaseline Pure Petroleum Jelly 50g",
+    "category": "Personal Care",
+    "barcode": "4792012017",
+    "costPrice": 190,
+    "sellingPrice": 250,
+    "stock": 30,
+    "lowStockAlert": 6
+  },
+  {
+    "id": "gr_care_18",
+    "name": "Gillette Mach 3 Shaving Razor",
+    "category": "Personal Care",
+    "barcode": "4792012018",
+    "costPrice": 420,
+    "sellingPrice": 540,
+    "stock": 15,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_baby_01",
+    "name": "Baby Cheramy Baby Cologne 100ml",
+    "category": "Baby Care",
+    "barcode": "4792013001",
+    "costPrice": 280,
+    "sellingPrice": 350,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_baby_02",
+    "name": "Baby Cheramy Baby Powder 200g",
+    "category": "Baby Care",
+    "barcode": "4792013002",
+    "costPrice": 290,
+    "sellingPrice": 360,
+    "stock": 25,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_baby_03",
+    "name": "Baby Cheramy Regular Baby Oil 100ml",
+    "category": "Baby Care",
+    "barcode": "4792013003",
+    "costPrice": 320,
+    "sellingPrice": 410,
+    "stock": 20,
+    "lowStockAlert": 4
+  },
+  {
+    "id": "gr_baby_04",
+    "name": "Velona Cuddles Baby Diapers (L - 10 pcs)",
+    "category": "Baby Care",
+    "barcode": "4792013004",
+    "costPrice": 650,
+    "sellingPrice": 790,
+    "stock": 20,
+    "lowStockAlert": 5
+  },
+  {
+    "id": "gr_baby_05",
+    "name": "Fems Dry Comfort Napkins (Pack of 10)",
+    "category": "Personal Care",
+    "barcode": "4792013005",
+    "costPrice": 220,
+    "sellingPrice": 280,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_baby_06",
+    "name": "Eva Wings Cotton Sanitary Pads (10 pcs)",
+    "category": "Personal Care",
+    "barcode": "4792013006",
+    "costPrice": 230,
+    "sellingPrice": 290,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_stat_01",
+    "name": "Atlas Chooty Blue Ballpoint Pen",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014001",
+    "costPrice": 35,
+    "sellingPrice": 50,
+    "stock": 100,
+    "lowStockAlert": 25
+  },
+  {
+    "id": "gr_stat_02",
+    "name": "Atlas CR Exercise Single Rule Book 80p",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014002",
+    "costPrice": 180,
+    "sellingPrice": 230,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_stat_03",
+    "name": "Atlas CR Exercise Single Rule Book 120p",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014003",
+    "costPrice": 250,
+    "sellingPrice": 320,
+    "stock": 35,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_stat_04",
+    "name": "Panasonic AA Carbon Zinc Batteries (Pair)",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014004",
+    "costPrice": 150,
+    "sellingPrice": 200,
+    "stock": 40,
+    "lowStockAlert": 10
+  },
+  {
+    "id": "gr_stat_05",
+    "name": "Panasonic AAA Batteries (Pair)",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014005",
+    "costPrice": 150,
+    "sellingPrice": 200,
+    "stock": 35,
+    "lowStockAlert": 8
+  },
+  {
+    "id": "gr_stat_06",
+    "name": "White Wax Lighting Candles (Pack of 6)",
+    "category": "Stationery & Batteries",
+    "barcode": "4792014006",
+    "costPrice": 220,
+    "sellingPrice": 280,
+    "stock": 30,
+    "lowStockAlert": 6
+  }
+];
+
+    const DEFAULT_SETTINGS = {
+      companyName: 'Lanka Super Grocery',
+      phone: '0715971214',
+      address: 'Main Street, Sri Lanka',
+      currency: 'Rs.',
+      taxRate: 0,
+      footerText: 'Thank you for shopping with us! Visit again.',
+      receiptSize: '80mm',
+      invoicePrefix: 'INV'
+    };
+
+    // --- HYBRID STORAGE & AUTO-SYNC ENGINE ---
+    const storage = {
+      isServerConnected: false,
+      serverUrl: window.location.origin.includes('localhost:3000') ? window.location.origin : 'http://localhost:3000',
+      fileHandle: null,
+      eventSource: null,
+      data: {
+        products: null,
+        sales: null,
+        settings: null,
+        stockLogs: null,
+        invoiceCounter: 1001
+      },
+
+      async init() {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1200);
+          const res = await fetch(`${this.serverUrl}/api/data`, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data) {
+              this.isServerConnected = true;
+              this.data = json.data;
+              for (const [k, v] of Object.entries(this.data)) {
+                try { localStorage.setItem('shorjs_' + k, JSON.stringify(v)); } catch(e){}
+              }
+              this.updateUIStatus('server', json.filePath || 'data.json');
+              this.connectSSE();
+              return;
+            }
+          }
+        } catch (e) {}
+
+        // Fallback: Read from local cache
+        this.isServerConnected = false;
+        const localProds = this.getFromLocal('products', []);
+        this.data.products = (localProds && localProds.length >= MASTER_GROCERY_CATALOG.length) ? localProds : MASTER_GROCERY_CATALOG;
+        try { localStorage.setItem('shorjs_products', JSON.stringify(this.data.products)); } catch(e){}
+        this.data.settings = this.getFromLocal('settings', DEFAULT_SETTINGS);
+        this.data.sales = this.getFromLocal('sales', []);
+        this.data.stockLogs = this.getFromLocal('stockLogs', []);
+        this.data.invoiceCounter = this.getFromLocal('invoiceCounter', 1001);
+
+        this.updateUIStatus('local', 'Local Cache');
+      },
+
+      connectSSE() {
+        if (!window.EventSource) return;
+        try {
+          if (this.eventSource) this.eventSource.close();
+          this.eventSource = new EventSource(`${this.serverUrl}/api/events`);
+          this.eventSource.onmessage = (event) => {
+            try {
+              const payload = JSON.parse(event.data);
+              if (payload.type === 'update' && payload.data) {
+                this.handleLiveUpdate(payload.data);
+              }
+            } catch(e) {}
+          };
+        } catch(e) {}
+      },
+
+      handleLiveUpdate(newData) {
+        if (!newData) return;
+        this.data = newData;
+        for (const [k, v] of Object.entries(newData)) {
+          try { localStorage.setItem('shorjs_' + k, JSON.stringify(v)); } catch(e){}
+        }
+        this.showSaveIndicator();
+
+        if (typeof posView !== 'undefined') {
+          posView.renderCatalog();
+          posView.renderCategories();
+          posView.updateNextInvoiceLabel();
+        }
+        if (typeof router !== 'undefined') {
+          if (router.current === 'products' && typeof productManager !== 'undefined') productManager.renderTable();
+          if (router.current === 'dashboard' && typeof dashboardView !== 'undefined') dashboardView.refresh();
+          if (router.current === 'history' && typeof historyManager !== 'undefined') historyManager.renderTable();
+          if (router.current === 'reports' && typeof reportsView !== 'undefined') reportsView.refresh();
+        }
+      },
+
+      startAutoSync() {
+        setInterval(async () => {
+          if (!this.isServerConnected) {
+            try {
+              const res = await fetch(`${this.serverUrl}/api/data`);
+              if (res.ok) {
+                const json = await res.json();
+                if (json.success && json.data) {
+                  this.isServerConnected = true;
+                  this.updateUIStatus('server', json.filePath || 'data.json');
+                  this.connectSSE();
+                  this.handleLiveUpdate(json.data);
+                }
+              }
+            } catch(e) {}
+          }
+        }, 3000);
+      },
+
+      getFromLocal(key, fallback = null) {
+        try {
+          const item = localStorage.getItem('shorjs_' + key);
+          return item ? JSON.parse(item) : fallback;
+        } catch (e) {
+          return fallback;
+        }
+      },
+
+      get(key, fallback = null) {
+        if (this.data && this.data[key] !== undefined && this.data[key] !== null) {
+          return this.data[key];
+        }
+        return this.getFromLocal(key, fallback);
+      },
+
+      set(key, value) {
+        if (!this.data) this.data = {};
+        this.data[key] = value;
+        try {
+          localStorage.setItem('shorjs_' + key, JSON.stringify(value));
+        } catch (e) {}
+
+        if (this.isServerConnected) {
+          this.syncToServer();
+        } else if (this.fileHandle) {
+          this.syncToFileHandle();
+        }
+      },
+
+      async syncToServer(showToast = false) {
+        try {
+          const payload = {
+            products: this.data.products || [],
+            sales: this.data.sales || [],
+            settings: this.data.settings || DEFAULT_SETTINGS,
+            stockLogs: this.data.stockLogs || [],
+            invoiceCounter: this.data.invoiceCounter || 1001
+          };
+          const res = await fetch(`${this.serverUrl}/api/data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            this.showSaveIndicator();
+            if (showToast) toast('Saved to data.json on computer!', 'success');
+          }
+        } catch (err) {
+          console.warn('[Sync Error]', err);
+        }
+      },
+
+      async syncToFileHandle() {
+        if (!this.fileHandle) return;
+        try {
+          const writable = await this.fileHandle.createWritable();
+          const payload = {
+            products: this.data.products || [],
+            sales: this.data.sales || [],
+            settings: this.data.settings || DEFAULT_SETTINGS,
+            stockLogs: this.data.stockLogs || [],
+            invoiceCounter: this.data.invoiceCounter || 1001,
+            lastSaved: new Date().toISOString()
+          };
+          await writable.write(JSON.stringify(payload, null, 2));
+          await writable.close();
+          this.showSaveIndicator();
+        } catch (e) {}
+      },
+
+      async forceReloadFromFile() {
+        if (!this.isServerConnected) {
+          toast('Start_POS.bat is not running. Double click Start_POS.bat to link file', 'warning');
+          return;
+        }
+        await this.init();
+        productManager.renderTable();
+        posView.renderCategories();
+        posView.renderCatalog();
+        historyManager.renderTable();
+        dashboardView.refresh();
+        settingsManager.init();
+        toast('Reloaded fresh data from data.json!', 'success');
+      },
+
+      showSaveIndicator() {
+        const dot = document.getElementById('storage-save-dot');
+        if (dot) {
+          dot.classList.remove('opacity-0');
+          setTimeout(() => dot.classList.add('opacity-0'), 1200);
+        }
+      },
+
+      updateUIStatus(type, label) {
+        const statusEl = document.getElementById('storage-status-pill');
+        const textEl = document.getElementById('storage-status-text');
+        if (!statusEl || !textEl) return;
+
+        if (type === 'server') {
+          statusEl.className = 'flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer shadow-sm transition';
+          textEl.innerText = 'Live Auto-Sync: data.json';
+        } else {
+          statusEl.className = 'flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 cursor-pointer shadow-sm transition hover:bg-amber-100';
+          textEl.innerText = 'Run Start_POS.bat (Click to link)';
+        }
+      },
+
+      async linkDirectFile() {
+        if (this.isServerConnected) {
+          toast('Already connected to data.json on your computer!', 'info');
+          return;
+        }
+        if (window.showSaveFilePicker) {
+          try {
+            const options = {
+              suggestedName: 'data.json',
+              types: [{ description: 'JSON Database File', accept: { 'application/json': ['.json'] } }]
+            };
+            this.fileHandle = await window.showSaveFilePicker(options);
+            await this.syncToFileHandle();
+            this.updateUIStatus('server', 'data.json (Direct Link)');
+            toast('Linked directly to computer file: data.json!', 'success');
+          } catch (e) {}
+        } else {
+          alert('To save directly to data.json on your computer, please run Start_POS.bat!');
+        }
+      }
+    };
+
+    // --- NOTIFICATION TOAST SYSTEM ---
+    const toast = (message, type = 'info') => {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white shadow-lg',
+        error: 'bg-rose-600 text-white shadow-lg',
+        info: 'bg-brand-600 text-white shadow-brand',
+        warning: 'bg-amber-500 text-slate-900 shadow-lg'
+      };
+      el.className = `${colors[type] || colors.info} px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transform transition-all duration-300 ease-out translate-y-2 opacity-0 pointer-events-auto`;
+      el.innerHTML = `<span>${message}</span>`;
+      container.appendChild(el);
+      requestAnimationFrame(() => {
+        el.classList.remove('translate-y-2', 'opacity-0');
+      });
+      setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 2600);
+    };
+
+    // --- NAVIGATION ROUTER ---
+    const router = {
+      current: 'pos',
+      navigate(viewName) {
+        this.current = viewName;
+        const views = ['pos', 'dashboard', 'products', 'history', 'reports', 'settings'];
+        views.forEach(v => {
+          const viewEl = document.getElementById(`view-${v}`);
+          const tabBtn = document.getElementById(`nav-btn-${v}`);
+          if (v === viewName) {
+            viewEl?.classList.remove('hidden');
+            tabBtn?.classList.remove('text-slate-500', 'hover:bg-slate-50', 'hover:text-slate-900');
+            tabBtn?.classList.add('bg-brand-600', 'text-white', 'shadow-brand');
+          } else {
+            viewEl?.classList.add('hidden');
+            tabBtn?.classList.remove('bg-brand-600', 'text-white', 'shadow-brand');
+            tabBtn?.classList.add('text-slate-500', 'hover:bg-slate-50', 'hover:text-slate-900');
+          }
+        });
+
+        if (viewName === 'dashboard') dashboardView.refresh();
+        if (viewName === 'products') productManager.renderTable();
+        if (viewName === 'history') historyManager.renderTable();
+        if (viewName === 'reports') reportsView.refresh();
+        if (viewName === 'pos') {
+          posView.renderCategories();
+          posView.renderCatalog();
+        }
+      }
+    };
+
+    // --- POS BILLING & CART STATE MANAGER ---
+    const cartManager = {
+      cart: [],
+
+      addItem(productId) {
+        const products = storage.get('products', []);
+        const item = products.find(p => p.id === productId);
+        if (!item) return;
+
+        if (item.stock <= 0) {
+          toast(`"${item.name}" is out of stock!`, 'error');
+          return;
+        }
+
+        const existing = this.cart.find(c => c.id === productId);
+        if (existing) {
+          if (existing.qty + 1 > item.stock) {
+            toast(`Cannot exceed available stock of ${item.stock}!`, 'warning');
+            return;
+          }
+          existing.qty += 1;
+        } else {
+          this.cart.push({
+            id: item.id,
+            name: item.name,
+            price: Number(item.sellingPrice),
+            costPrice: Number(item.costPrice || 0),
+            qty: 1,
+            maxStock: item.stock
+          });
+        }
+        this.renderCart();
+      },
+
+      updateQty(productId, delta) {
+        const products = storage.get('products', []);
+        const currentProd = products.find(p => p.id === productId);
+        const availableStock = currentProd ? currentProd.stock : 999;
+
+        const existing = this.cart.find(c => c.id === productId);
+        if (!existing) return;
+
+        const targetQty = existing.qty + delta;
+        if (targetQty <= 0) {
+          this.removeItem(productId);
+          return;
+        }
+        if (targetQty > availableStock) {
+          toast(`Stock limit reached (${availableStock} in stock)`, 'warning');
+          return;
+        }
+        existing.qty = targetQty;
+        existing.maxStock = availableStock;
+        this.renderCart();
+      },
+
+      removeItem(productId) {
+        this.cart = this.cart.filter(c => c.id !== productId);
+        this.renderCart();
+      },
+
+      clearCart() {
+        if (this.cart.length === 0) return;
+        this.cart = [];
+        this.renderCart();
+        toast('Order cleared', 'info');
+      },
+
+      renderCart() {
+        const container = document.getElementById('pos-cart-items');
+        const badge = document.getElementById('pos-cart-badge');
+        const count = this.cart.reduce((sum, item) => sum + item.qty, 0);
+        badge.innerText = `${count} ${count === 1 ? 'item' : 'items'}`;
+
+        if (this.cart.length === 0) {
+          container.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+              <div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-2">
+                <svg class="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              </div>
+              <p class="text-xs font-bold text-slate-600">No items selected</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Click any grocery card or scan a barcode to add to bill</p>
+            </div>
+          `;
+          this.calculateTotals();
+          return;
+        }
+
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        container.innerHTML = this.cart.map(item => `
+          <div class="py-2.5 flex items-center justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <h5 class="text-xs font-bold text-slate-900 truncate">${item.name}</h5>
+              <p class="text-[11px] text-slate-400 font-semibold">${settings.currency} ${item.price.toFixed(2)} each</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="cartManager.updateQty('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-black text-xs text-slate-700 transition">-</button>
+              <span class="w-6 text-center text-xs font-black text-slate-900">${item.qty}</span>
+              <button onclick="cartManager.updateQty('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-black text-xs text-slate-700 transition">+</button>
+            </div>
+            <div class="text-right min-w-[70px]">
+              <span class="text-xs font-black text-slate-900">${settings.currency} ${(item.price * item.qty).toFixed(2)}</span>
+            </div>
+            <button onclick="cartManager.removeItem('${item.id}')" class="text-slate-300 hover:text-rose-500 text-sm font-bold transition">&times;</button>
+          </div>
+        `).join('');
+
+        this.calculateTotals();
+      },
+
+      calculateTotals() {
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+        const discountInput = Number(document.getElementById('pos-discount-input')?.value || 0);
+        const discountType = document.getElementById('pos-discount-type')?.value || 'fixed';
+
+        let discountVal = discountType === 'percent' ? (subtotal * discountInput) / 100 : discountInput;
+        discountVal = Math.min(discountVal, subtotal);
+
+        const taxable = Math.max(0, subtotal - discountVal);
+        const taxRate = Number(settings.taxRate || 0);
+        const tax = (taxable * taxRate) / 100;
+        const grandTotal = taxable + tax;
+
+        document.getElementById('pos-calc-subtotal').innerText = `${settings.currency} ${subtotal.toFixed(2)}`;
+        document.getElementById('pos-tax-label').innerText = `Tax (${taxRate}%)`;
+        document.getElementById('pos-calc-tax').innerText = `${settings.currency} ${tax.toFixed(2)}`;
+        document.getElementById('pos-calc-total').innerText = `${settings.currency} ${grandTotal.toFixed(2)}`;
+
+        this.updateBalance();
+      },
+
+      setExactCash() {
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const totalText = document.getElementById('pos-calc-total').innerText.replace(`${settings.currency} `, '');
+        const total = parseFloat(totalText) || 0;
+        document.getElementById('pos-cash-received').value = total.toFixed(2);
+        this.updateBalance();
+      },
+
+      setCashAmount(amount) {
+        document.getElementById('pos-cash-received').value = amount;
+        this.updateBalance();
+      },
+
+      updateBalance() {
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const totalText = document.getElementById('pos-calc-total').innerText.replace(`${settings.currency} `, '');
+        const total = parseFloat(totalText) || 0;
+        const cash = parseFloat(document.getElementById('pos-cash-received').value) || 0;
+        const changeDue = Math.max(0, cash - total);
+        document.getElementById('pos-change-due').innerText = `${settings.currency} ${changeDue.toFixed(2)}`;
+      },
+
+      completeCheckout() {
+        if (this.cart.length === 0) {
+          toast('Cart is empty. Add grocery items first!', 'warning');
+          return;
+        }
+
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const discountInput = Number(document.getElementById('pos-discount-input').value || 0);
+        const discountType = document.getElementById('pos-discount-type').value;
+        const discountVal = discountType === 'percent' ? (subtotal * discountInput) / 100 : discountInput;
+        const taxRate = Number(settings.taxRate || 0);
+        const tax = ((subtotal - discountVal) * taxRate) / 100;
+        const grandTotal = (subtotal - discountVal) + tax;
+        const cashTendered = parseFloat(document.getElementById('pos-cash-received').value) || grandTotal;
+
+        if (cashTendered < grandTotal) {
+          toast(`Received cash (${settings.currency} ${cashTendered}) is less than Total (${settings.currency} ${grandTotal.toFixed(2)})!`, 'error');
+          return;
+        }
+
+        const products = storage.get('products', []);
+        for (const item of this.cart) {
+          const p = products.find(prod => prod.id === item.id);
+          if (!p || p.stock < item.qty) {
+            toast(`Insufficient stock for "${item.name}"! Available: ${p ? p.stock : 0}`, 'error');
+            return;
+          }
+        }
+
+        // Deduct sold quantities from inventory
+        this.cart.forEach(cartItem => {
+          const p = products.find(prod => prod.id === cartItem.id);
+          if (p) {
+            p.stock = Math.max(0, p.stock - cartItem.qty);
+          }
+        });
+        storage.set('products', products);
+
+        let counter = storage.get('invoiceCounter', 1001);
+        const invoiceId = `${settings.invoicePrefix || 'INV'}-${counter}`;
+        storage.set('invoiceCounter', counter + 1);
+
+        const newSale = {
+          invoiceId,
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          items: [...this.cart],
+          subtotal,
+          discount: discountVal,
+          tax,
+          total: grandTotal,
+          cashReceived: cashTendered,
+          change: cashTendered - grandTotal
+        };
+
+        const sales = storage.get('sales', []);
+        sales.unshift(newSale);
+        storage.set('sales', sales);
+
+        toast(`Sale complete! Invoice ${invoiceId}`, 'success');
+
+        const autoPrint = document.getElementById('pos-auto-print')?.checked ?? true;
+
+        this.cart = [];
+        document.getElementById('pos-discount-input').value = '0';
+        document.getElementById('pos-cash-received').value = '';
+        this.renderCart();
+        posView.renderCatalog();
+        posView.updateNextInvoiceLabel();
+
+        receiptRenderer.open(newSale, autoPrint);
+      },
+
+      holdSale() {
+        if (this.cart.length === 0) return;
+        storage.set('heldOrder', this.cart);
+        this.cart = [];
+        this.renderCart();
+        toast('Sale put on hold', 'info');
+      }
+    };
+
+    // --- POS VIEW: PRODUCT CATALOG & SCANNING ---
+    const posView = {
+      activeCategory: 'All',
+
+      init() {
+        this.renderCategories();
+        this.renderCatalog();
+        this.updateNextInvoiceLabel();
+
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'F9') {
+            e.preventDefault();
+            cartManager.completeCheckout();
+          }
+        });
+      },
+
+      updateNextInvoiceLabel() {
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const counter = storage.get('invoiceCounter', 1001);
+        document.getElementById('pos-current-invoice-id').innerText = `${settings.invoicePrefix || 'INV'}-${counter}`;
+      },
+
+      renderCategories() {
+        const products = storage.get('products', []);
+        const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
+        const container = document.getElementById('pos-category-pills');
+        if (!container) return;
+
+        container.innerHTML = categories.map(cat => `
+          <button onclick="posView.filterCategory('${cat}')" class="px-3.5 py-1.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${this.activeCategory === cat ? 'bg-brand-600 text-white shadow-brand' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+            ${cat}
+          </button>
+        `).join('');
+
+        const datalist = document.getElementById('category-datalist');
+        if (datalist) {
+          datalist.innerHTML = categories.filter(c => c !== 'All').map(c => `<option value="${c}"></option>`).join('');
+        }
+      },
+
+      filterCategory(cat) {
+        this.activeCategory = cat;
+        this.renderCategories();
+        this.renderCatalog();
+      },
+
+      handleSearch(query) {
+        const products = storage.get('products', []);
+        const q = query.trim().toLowerCase();
+
+        const exactMatch = products.find(p => p.barcode && p.barcode.toLowerCase() === q);
+        if (exactMatch && query.length >= 4) {
+          cartManager.addItem(exactMatch.id);
+          const searchInput = document.getElementById('global-search-input');
+          if (searchInput) searchInput.value = '';
+          toast(`Scanned: ${exactMatch.name}`, 'success');
+          this.renderCatalog();
+          return;
+        }
+        this.renderCatalog();
+      },
+
+      renderCatalog() {
+        const products = storage.get('products', []);
+        const query = document.getElementById('global-search-input')?.value.trim().toLowerCase() || '';
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+
+        const filtered = products.filter(p => {
+          const matchesCat = this.activeCategory === 'All' || p.category === this.activeCategory;
+          const matchesQuery = !query || 
+            p.name.toLowerCase().includes(query) || 
+            (p.barcode && p.barcode.toLowerCase().includes(query));
+          return matchesCat && matchesQuery;
+        });
+
+        const grid = document.getElementById('pos-product-grid');
+        if (!grid) return;
+
+        if (filtered.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full py-16 text-center text-slate-400">
+              <p class="text-sm font-bold text-slate-600">No products match your filter</p>
+              <p class="text-xs mt-1">Try another search term or click "+ New Product"</p>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = filtered.map(item => {
+          const isLow = item.stock <= (item.lowStockAlert || 5) && item.stock > 0;
+          const isOut = item.stock <= 0;
+          return `
+            <div onclick="${isOut ? `toast('${item.name} is out of stock! Add stock first.', 'warning')` : `cartManager.addItem('${item.id}')`}" class="group relative bg-white p-3.5 rounded-3xl border ${isOut ? 'border-rose-200 opacity-60 cursor-not-allowed bg-rose-50/20' : 'border-slate-200/80 hover:border-brand-500 hover:shadow-card cursor-pointer'} transition-all duration-150 flex flex-col justify-between select-none">
+              <div>
+                <div class="flex items-start justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-extrabold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-xl truncate max-w-[110px]">${item.category}</span>
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-xl ${isOut ? 'bg-rose-100 text-rose-700' : isLow ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}">
+                    ${isOut ? 'Out' : `${item.stock} left`}
+                  </span>
+                </div>
+                <h4 class="font-bold text-xs text-slate-900 line-clamp-2 leading-snug group-hover:text-brand-600 transition">${item.name}</h4>
+                ${item.barcode ? `<p class="text-[10px] font-mono text-slate-400 mt-1">#${item.barcode}</p>` : ''}
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                <span class="font-black text-sm text-slate-900">${settings.currency} ${Number(item.sellingPrice).toFixed(2)}</span>
+                <span class="w-7 h-7 rounded-xl ${isOut ? 'bg-slate-100 text-slate-400' : 'bg-brand-50 group-hover:bg-brand-600 text-brand-600 group-hover:text-white'} flex items-center justify-center font-black transition">
+                  +
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    };
+
+    // --- PRODUCT MANAGEMENT CONTROLLER ---
+    const productManager = {
+      renderTable() {
+        const products = storage.get('products', []);
+        const search = document.getElementById('product-filter-search')?.value.toLowerCase() || '';
+        const catFilter = document.getElementById('product-filter-category')?.value || '';
+        const stockFilter = document.getElementById('product-filter-stock')?.value || '';
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+
+        const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+        const catSelect = document.getElementById('product-filter-category');
+        if (catSelect) {
+          const currentVal = catSelect.value;
+          catSelect.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+          catSelect.value = currentVal;
+        }
+
+        const filtered = products.filter(p => {
+          const matchesSearch = !search || p.name.toLowerCase().includes(search) || (p.barcode && p.barcode.toLowerCase().includes(search));
+          const matchesCat = !catFilter || p.category === catFilter;
+          let matchesStock = true;
+          if (stockFilter === 'low') matchesStock = p.stock <= (p.lowStockAlert || 5) && p.stock > 0;
+          if (stockFilter === 'out') matchesStock = p.stock <= 0;
+          return matchesSearch && matchesCat && matchesStock;
+        });
+
+        const tbody = document.getElementById('products-table-body');
+        if (!tbody) return;
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 font-bold">No products found matching criteria.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(p => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-4 font-bold text-slate-900">${p.name}</td>
+            <td class="p-4 text-slate-500 font-semibold">${p.category}</td>
+            <td class="p-4 font-mono text-slate-400">${p.barcode || '---'}</td>
+            <td class="p-4 text-right font-semibold text-slate-600">${settings.currency} ${(p.costPrice || 0).toFixed(2)}</td>
+            <td class="p-4 text-right font-black text-slate-900">${settings.currency} ${Number(p.sellingPrice).toFixed(2)}</td>
+            <td class="p-4 text-center">
+              <span class="px-3 py-1 rounded-full text-[11px] font-extrabold ${p.stock <= 0 ? 'bg-rose-100 text-rose-700' : p.stock <= (p.lowStockAlert || 5) ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
+                ${p.stock} in stock
+              </span>
+            </td>
+            <td class="p-4 text-center whitespace-nowrap space-x-1.5">
+              <button onclick="stockManager.openModal('${p.id}')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition inline-flex items-center gap-1 text-[11px]" title="Add Stock">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                + Stock
+              </button>
+              <button onclick="productManager.editProduct('${p.id}')" class="px-2.5 py-1.5 text-brand-600 font-bold hover:underline text-[11px]">Edit</button>
+              <button onclick="productManager.deleteProduct('${p.id}')" class="px-2.5 py-1.5 text-rose-600 font-bold hover:underline text-[11px]">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      },
+
+      openModal(isEdit = false) {
+        document.getElementById('modal-product').classList.remove('hidden');
+        document.getElementById('modal-product-title').innerText = isEdit ? 'Edit Product' : 'Add New Product';
+        if (!isEdit) {
+          document.getElementById('product-form').reset();
+          document.getElementById('prod-form-id').value = '';
+          document.getElementById('prod-form-stock').value = '20';
+          document.getElementById('prod-form-low-alert').value = '5';
+          this.generateBarcode();
+        }
+      },
+
+      closeModal() {
+        document.getElementById('modal-product').classList.add('hidden');
+      },
+
+      generateBarcode() {
+        const code = '79' + Math.floor(100000 + Math.random() * 900000);
+        document.getElementById('prod-form-barcode').value = code;
+      },
+
+      editProduct(id) {
+        const products = storage.get('products', []);
+        const p = products.find(item => item.id === id);
+        if (!p) return;
+
+        document.getElementById('prod-form-id').value = p.id;
+        document.getElementById('prod-form-name').value = p.name;
+        document.getElementById('prod-form-category').value = p.category;
+        document.getElementById('prod-form-barcode').value = p.barcode || '';
+        document.getElementById('prod-form-cost').value = p.costPrice || 0;
+        document.getElementById('prod-form-price').value = p.sellingPrice;
+        document.getElementById('prod-form-stock').value = p.stock;
+        document.getElementById('prod-form-low-alert').value = p.lowStockAlert || 5;
+
+        this.openModal(true);
+      },
+
+      saveForm(e) {
+        e.preventDefault();
+        const id = document.getElementById('prod-form-id').value;
+        const products = storage.get('products', []);
+
+        const productData = {
+          id: id || 'prod_' + Date.now(),
+          name: document.getElementById('prod-form-name').value.trim(),
+          category: document.getElementById('prod-form-category').value.trim() || 'General',
+          barcode: document.getElementById('prod-form-barcode').value.trim(),
+          costPrice: parseFloat(document.getElementById('prod-form-cost').value) || 0,
+          sellingPrice: parseFloat(document.getElementById('prod-form-price').value) || 0,
+          stock: parseInt(document.getElementById('prod-form-stock').value) || 0,
+          lowStockAlert: parseInt(document.getElementById('prod-form-low-alert').value) || 5
+        };
+
+        if (id) {
+          const index = products.findIndex(p => p.id === id);
+          if (index !== -1) products[index] = productData;
+          toast(`Updated "${productData.name}"`, 'success');
+        } else {
+          products.unshift(productData);
+          toast(`Added "${productData.name}" to inventory!`, 'success');
+        }
+
+        storage.set('products', products);
+        this.closeModal();
+        this.renderTable();
+        posView.renderCategories();
+        posView.renderCatalog();
+        if (router.current === 'dashboard') dashboardView.refresh();
+      },
+
+      deleteProduct(id) {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        let products = storage.get('products', []);
+        products = products.filter(p => p.id !== id);
+        storage.set('products', products);
+        toast('Product deleted', 'info');
+        this.renderTable();
+        posView.renderCategories();
+        posView.renderCatalog();
+        if (router.current === 'dashboard') dashboardView.refresh();
+      }
+    };
+
+    // --- STOCK IN / RESTOCK CONTROLLER ---
+    const stockManager = {
+      currentProductId: null,
+
+      openModal(productId) {
+        const products = storage.get('products', []);
+        const p = products.find(prod => prod.id === productId);
+        if (!p) return;
+
+        this.currentProductId = productId;
+        document.getElementById('modal-stock-in').classList.remove('hidden');
+        document.getElementById('stock-in-select-container').classList.add('hidden');
+
+        document.getElementById('stock-in-prod-name').innerText = p.name;
+        document.getElementById('stock-in-prod-meta').innerText = `${p.category || 'General'}${p.barcode ? ` | SKU: ${p.barcode}` : ''}`;
+        document.getElementById('stock-in-current-stock').innerText = p.stock;
+        document.getElementById('stock-in-qty').value = '';
+        document.getElementById('stock-in-cost').value = p.costPrice || '';
+        document.getElementById('stock-in-price').value = p.sellingPrice || '';
+        document.getElementById('stock-in-new-total').innerText = `${p.stock} Units`;
+
+        setTimeout(() => document.getElementById('stock-in-qty').focus(), 60);
+      },
+
+      openQuickModal() {
+        const products = storage.get('products', []);
+        if (products.length === 0) {
+          toast('No products in store. Please add products first!', 'warning');
+          productManager.openModal(false);
+          return;
+        }
+
+        document.getElementById('modal-stock-in').classList.remove('hidden');
+        document.getElementById('stock-in-select-container').classList.remove('hidden');
+
+        const select = document.getElementById('stock-in-product-select');
+        select.innerHTML = products.map(p => `
+          <option value="${p.id}">${p.name} (Current: ${p.stock})</option>
+        `).join('');
+
+        this.onProductSelected(products[0].id);
+      },
+
+      onProductSelected(productId) {
+        const products = storage.get('products', []);
+        const p = products.find(prod => prod.id === productId);
+        if (!p) return;
+
+        this.currentProductId = productId;
+        document.getElementById('stock-in-prod-name').innerText = p.name;
+        document.getElementById('stock-in-prod-meta').innerText = `${p.category || 'General'}${p.barcode ? ` | SKU: ${p.barcode}` : ''}`;
+        document.getElementById('stock-in-current-stock').innerText = p.stock;
+        document.getElementById('stock-in-qty').value = '';
+        document.getElementById('stock-in-cost').value = p.costPrice || '';
+        document.getElementById('stock-in-price').value = p.sellingPrice || '';
+        document.getElementById('stock-in-new-total').innerText = `${p.stock} Units`;
+      },
+
+      closeModal() {
+        document.getElementById('modal-stock-in').classList.add('hidden');
+        this.currentProductId = null;
+      },
+
+      handleQtyInput() {
+        const products = storage.get('products', []);
+        const p = products.find(prod => prod.id === this.currentProductId);
+        if (!p) return;
+
+        const addQty = parseInt(document.getElementById('stock-in-qty').value) || 0;
+        const newTotal = p.stock + addQty;
+        document.getElementById('stock-in-new-total').innerText = `${newTotal} Units`;
+      },
+
+      saveStockIn(e) {
+        e.preventDefault();
+        if (!this.currentProductId) return;
+
+        const addQty = parseInt(document.getElementById('stock-in-qty').value);
+        if (isNaN(addQty) || addQty <= 0) {
+          toast('Please enter a valid stock quantity', 'warning');
+          return;
+        }
+
+        const products = storage.get('products', []);
+        const p = products.find(prod => prod.id === this.currentProductId);
+        if (!p) return;
+
+        const oldStock = p.stock;
+        p.stock += addQty;
+
+        const newCost = parseFloat(document.getElementById('stock-in-cost').value);
+        if (!isNaN(newCost) && newCost >= 0) p.costPrice = newCost;
+
+        const newPrice = parseFloat(document.getElementById('stock-in-price').value);
+        if (!isNaN(newPrice) && newPrice > 0) p.sellingPrice = newPrice;
+
+        storage.set('products', products);
+
+        const stockLogs = storage.get('stockLogs', []);
+        stockLogs.unshift({
+          productId: p.id,
+          productName: p.name,
+          addedQty: addQty,
+          previousStock: oldStock,
+          newStock: p.stock,
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString()
+        });
+        storage.set('stockLogs', stockLogs.slice(0, 100));
+
+        toast(`Added +${addQty} to "${p.name}". Total: ${p.stock}`, 'success');
+        this.closeModal();
+
+        productManager.renderTable();
+        posView.renderCatalog();
+        if (router.current === 'dashboard') dashboardView.refresh();
+      }
+    };
+
+    // --- SALES HISTORY CONTROLLER ---
+    const historyManager = {
+      renderTable() {
+        const sales = storage.get('sales', []);
+        const search = document.getElementById('history-filter-search')?.value.toLowerCase() || '';
+        const dateFilter = document.getElementById('history-filter-date')?.value || '';
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+
+        const filtered = sales.filter(s => {
+          const matchesSearch = !search || s.invoiceId.toLowerCase().includes(search);
+          const matchesDate = !dateFilter || (s.timestamp && s.timestamp.startsWith(dateFilter));
+          return matchesSearch && matchesDate;
+        });
+
+        const tbody = document.getElementById('history-table-body');
+        if (!tbody) return;
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400 font-bold">No completed sales recorded.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(s => {
+          const itemCount = s.items.reduce((sum, i) => sum + i.qty, 0);
+          return `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-4 font-mono font-bold text-brand-600">${s.invoiceId}</td>
+              <td class="p-4 text-slate-500">${s.date} ${s.time}</td>
+              <td class="p-4 text-slate-700 font-bold">${itemCount} items (${s.items.length} lines)</td>
+              <td class="p-4 text-right">${settings.currency} ${(s.subtotal || s.total).toFixed(2)}</td>
+              <td class="p-4 text-right text-rose-500">${settings.currency} ${(s.discount || 0).toFixed(2)}</td>
+              <td class="p-4 text-right">${settings.currency} ${(s.tax || 0).toFixed(2)}</td>
+              <td class="p-4 text-right font-black text-slate-900">${settings.currency} ${s.total.toFixed(2)}</td>
+              <td class="p-4 text-center space-x-2">
+                <button onclick="historyManager.reprintSale('${s.invoiceId}')" class="px-3 py-1.5 rounded-xl bg-brand-50 text-brand-600 font-bold hover:bg-brand-100 transition">Reprint</button>
+                <button onclick="historyManager.deleteSale('${s.invoiceId}')" class="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 transition">Void</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      },
+
+      reprintSale(invoiceId) {
+        const sales = storage.get('sales', []);
+        const sale = sales.find(s => s.invoiceId === invoiceId);
+        if (sale) receiptRenderer.open(sale, false);
+      },
+
+      deleteSale(invoiceId) {
+        if (!confirm(`Void invoice ${invoiceId}? Items will be automatically returned to stock.`)) return;
+
+        let sales = storage.get('sales', []);
+        const sale = sales.find(s => s.invoiceId === invoiceId);
+
+        if (sale && sale.items) {
+          const products = storage.get('products', []);
+          sale.items.forEach(soldItem => {
+            const p = products.find(prod => prod.id === soldItem.id);
+            if (p) {
+              p.stock = (p.stock || 0) + soldItem.qty;
+            }
+          });
+          storage.set('products', products);
+        }
+
+        sales = sales.filter(s => s.invoiceId !== invoiceId);
+        storage.set('sales', sales);
+
+        toast(`Invoice ${invoiceId} voided & items returned to inventory!`, 'info');
+        this.renderTable();
+        posView.renderCatalog();
+        if (router.current === 'products') productManager.renderTable();
+        if (router.current === 'dashboard') dashboardView.refresh();
+      }
+    };
+
+    // --- RECEIPT BUILDER & PRINT ENGINE ---
+    const receiptRenderer = {
+      currentSale: null,
+
+      open(sale, autoTriggerPrint = false) {
+        this.currentSale = sale;
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+        const container = document.getElementById('receipt-print-area');
+        container.setAttribute('data-size', settings.receiptSize || '80mm');
+
+        const totalQty = sale.items.reduce((sum, item) => sum + item.qty, 0);
+
+        container.innerHTML = `
+          <div class="text-center space-y-1 pb-3 border-b border-dashed border-slate-400">
+            <h2 class="text-lg font-black tracking-tight uppercase">${settings.companyName || 'Lanka Super Grocery'}</h2>
+            ${settings.address ? `<p class="text-[11px] text-slate-700">${settings.address}</p>` : ''}
+            ${settings.phone ? `<p class="text-[11px] text-slate-700">Tel: ${settings.phone}</p>` : ''}
+          </div>
+
+          <div class="py-2.5 border-b border-dashed border-slate-400 text-[11px] space-y-1">
+            <div class="flex justify-between">
+              <span>Invoice No:</span>
+              <span class="font-bold font-mono">${sale.invoiceId}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Date & Time:</span>
+              <span>${sale.date} ${sale.time}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Cashier:</span>
+              <span>Cashier 01 / Station 01</span>
+            </div>
+          </div>
+
+          <table class="w-full text-left my-2.5 text-[11px]">
+            <thead>
+              <tr class="border-b-2 border-slate-800">
+                <th class="py-1 text-left">ITEM</th>
+                <th class="py-1 text-center">QTY</th>
+                <th class="py-1 text-right">PRICE</th>
+                <th class="py-1 text-right">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-dashed divide-slate-300">
+              ${sale.items.map(item => `
+                <tr>
+                  <td class="py-1.5 leading-tight font-bold">${item.name}</td>
+                  <td class="py-1.5 text-center font-bold">${item.qty}</td>
+                  <td class="py-1.5 text-right font-mono">${item.price.toFixed(2)}</td>
+                  <td class="py-1.5 text-right font-bold font-mono">${(item.price * item.qty).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="pt-2 border-t-2 border-slate-800 space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-600">
+              <span>Items / Units:</span>
+              <span>${sale.items.length} items (${totalQty} units)</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Subtotal:</span>
+              <span class="font-mono">${settings.currency} ${(sale.subtotal || sale.total).toFixed(2)}</span>
+            </div>
+            ${sale.discount > 0 ? `
+              <div class="flex justify-between text-rose-600 font-semibold">
+                <span>Discount:</span>
+                <span class="font-mono">-${settings.currency} ${sale.discount.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${sale.tax > 0 ? `
+              <div class="flex justify-between">
+                <span>Tax (${settings.taxRate}%):</span>
+                <span class="font-mono">${settings.currency} ${sale.tax.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            <div class="flex justify-between text-base font-black pt-1.5 pb-1 border-t-2 border-b-2 border-slate-900">
+              <span>GRAND TOTAL:</span>
+              <span class="font-mono">${settings.currency} ${sale.total.toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between pt-1">
+              <span>Cash Received:</span>
+              <span class="font-mono">${settings.currency} ${(sale.cashReceived || sale.total).toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between font-bold">
+              <span>Change Due:</span>
+              <span class="font-mono text-emerald-600">${settings.currency} ${(sale.change || 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-dashed border-slate-400 text-center space-y-1">
+            <p class="font-bold text-[11px] uppercase">${settings.footerText || 'Thank you for shopping with us!'}</p>
+            <p class="text-[9px] text-slate-400">Powered by LankaPOS Local Engine</p>
+          </div>
+        `;
+
+        document.getElementById('modal-receipt').classList.remove('hidden');
+
+        if (autoTriggerPrint) {
+          setTimeout(() => {
+            receiptRenderer.triggerPrint();
+          }, 350);
+        }
+      },
+
+      closeModal() {
+        document.getElementById('modal-receipt').classList.add('hidden');
+        document.getElementById('global-search-input')?.focus();
+      },
+
+      triggerPrint() {
+        window.print();
+      }
+    };
+
+    // --- DASHBOARD REAL-TIME METRICS ---
+    const dashboardView = {
+      refresh() {
+        const sales = storage.get('sales', []);
+        const products = storage.get('products', []);
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+
+        const todayStr = new Date().toLocaleDateString();
+        const todaySales = sales.filter(s => s.date === todayStr);
+
+        const todayRev = todaySales.reduce((sum, s) => sum + s.total, 0);
+        let todayProfit = 0;
+
+        todaySales.forEach(s => {
+          s.items.forEach(item => {
+            const margin = (item.price - (item.costPrice || 0)) * item.qty;
+            todayProfit += margin;
+          });
+        });
+
+        document.getElementById('dash-today-sales').innerText = `${settings.currency} ${todayRev.toFixed(2)}`;
+        document.getElementById('dash-today-orders').innerText = `${todaySales.length} invoices created today`;
+        document.getElementById('dash-today-profit').innerText = `${settings.currency} ${todayProfit.toFixed(2)}`;
+
+        const totalMonthRev = sales.reduce((sum, s) => sum + s.total, 0);
+        document.getElementById('dash-month-revenue').innerText = `${settings.currency} ${totalMonthRev.toFixed(2)}`;
+
+        const lowStockCount = products.filter(p => p.stock <= (p.lowStockAlert || 5)).length;
+        document.getElementById('dash-products-count').innerText = `${products.length} Items`;
+        document.getElementById('dash-low-stock-count').innerText = `${lowStockCount} low stock alerts`;
+
+        // Recent sales list
+        const recentContainer = document.getElementById('dash-recent-sales-list');
+        if (sales.length === 0) {
+          recentContainer.innerHTML = `<p class="py-6 text-center text-xs text-slate-400 font-bold">No transactions recorded yet.</p>`;
+        } else {
+          recentContainer.innerHTML = sales.slice(0, 5).map(s => `
+            <div class="py-2.5 flex items-center justify-between text-xs">
+              <div>
+                <p class="font-extrabold text-slate-900">${s.invoiceId}</p>
+                <p class="text-[10px] text-slate-400 font-semibold">${s.date} ${s.time}</p>
+              </div>
+              <div class="text-right">
+                <span class="font-black text-brand-600">${settings.currency} ${s.total.toFixed(2)}</span>
+                <p class="text-[10px] text-slate-400 font-bold">${s.items.length} items</p>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        // Top selling products
+        const productTally = {};
+        sales.forEach(s => {
+          s.items.forEach(i => {
+            productTally[i.name] = (productTally[i.name] || 0) + i.qty;
+          });
+        });
+
+        const sortedTally = Object.entries(productTally).sort((a, b) => b[1] - a[1]);
+        const topList = document.getElementById('dash-top-products-list');
+        if (sortedTally.length === 0) {
+          // Pre-populate with top catalog groceries as showcase
+          const topSamples = products.slice(0, 4);
+          topList.innerHTML = topSamples.map(p => `
+            <div class="py-2.5 flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate pr-2">${p.name}</span>
+              <span class="font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px]">${p.stock} left</span>
+            </div>
+          `).join('');
+        } else {
+          topList.innerHTML = sortedTally.slice(0, 5).map(([name, qty]) => `
+            <div class="py-2.5 flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate pr-2">${name}</span>
+              <span class="font-extrabold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px]">${qty} sold</span>
+            </div>
+          `).join('');
+        }
+      }
+    };
+
+    // --- PERFORMANCE REPORTS CONTROLLER ---
+    const reportsView = {
+      refresh() {
+        const sales = storage.get('sales', []);
+        const products = storage.get('products', []);
+        const settings = storage.get('settings', DEFAULT_SETTINGS);
+
+        const totalRev = sales.reduce((sum, s) => sum + s.total, 0);
+        let totalProfit = 0;
+        sales.forEach(s => {
+          s.items.forEach(i => {
+            totalProfit += (i.price - (i.costPrice || 0)) * i.qty;
+          });
+        });
+
+        const avgSale = sales.length > 0 ? (totalRev / sales.length) : 0;
+
+        document.getElementById('report-alltime-rev').innerText = `${settings.currency} ${totalRev.toFixed(2)}`;
+        document.getElementById('report-alltime-profit').innerText = `${settings.currency} ${totalProfit.toFixed(2)}`;
+        document.getElementById('report-avg-sale').innerText = `${settings.currency} ${avgSale.toFixed(2)}`;
+
+        const catRev = {};
+        sales.forEach(s => {
+          s.items.forEach(i => {
+            const p = products.find(prod => prod.id === i.id);
+            const cat = p ? p.category : 'General';
+            catRev[cat] = (catRev[cat] || 0) + (i.price * i.qty);
+          });
+        });
+
+        const catContainer = document.getElementById('report-category-list');
+        const entries = Object.entries(catRev);
+        if (entries.length === 0) {
+          catContainer.innerHTML = `<p class="text-xs text-slate-400 font-bold py-4">Completed sales will populate category analytics.</p>`;
+        } else {
+          catContainer.innerHTML = entries.map(([category, amount]) => {
+            const percent = totalRev > 0 ? Math.round((amount / totalRev) * 100) : 0;
+            return `
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span>${category}</span>
+                  <span class="text-brand-600">${settings.currency} ${amount.toFixed(2)} (${percent}%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-600 h-full rounded-full" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const productSalesCount = {};
+        products.forEach(p => productSalesCount[p.name] = 0);
+        sales.forEach(s => {
+          s.items.forEach(i => {
+            if (productSalesCount[i.name] !== undefined) {
+              productSalesCount[i.name] += i.qty;
+            }
+          });
+        });
+
+        const slowMovers = Object.entries(productSalesCount).sort((a, b) => a[1] - b[1]).slice(0, 5);
+        const slowContainer = document.getElementById('report-slow-movers');
+        slowContainer.innerHTML = slowMovers.map(([name, sold]) => `
+          <div class="py-2.5 flex items-center justify-between">
+            <span class="text-slate-800 font-bold">${name}</span>
+            <span class="text-slate-400 font-semibold">${sold} units sold</span>
+          </div>
+        `).join('');
+      }
+    };
+
+    // --- SETTINGS CONTROLLER ---
+    const settingsManager = {
+      init() {
+        const s = storage.get('settings', DEFAULT_SETTINGS);
+        document.getElementById('setting-company-name').value = s.companyName || 'Lanka Super Grocery';
+        document.getElementById('setting-phone').value = s.phone || '';
+        document.getElementById('setting-address').value = s.address || '';
+        document.getElementById('setting-currency').value = s.currency || 'Rs.';
+        document.getElementById('setting-tax').value = s.taxRate || 0;
+        document.getElementById('setting-receipt-size').value = s.receiptSize || '80mm';
+        document.getElementById('setting-prefix').value = s.invoicePrefix || 'INV';
+        document.getElementById('setting-footer').value = s.footerText || '';
+
+        document.getElementById('header-company-name').innerText = s.companyName || 'Lanka Super Grocery';
+      },
+
+      saveCompanySettings() {
+        const updated = {
+          companyName: document.getElementById('setting-company-name').value.trim() || 'Lanka Super Grocery',
+          phone: document.getElementById('setting-phone').value.trim(),
+          address: document.getElementById('setting-address').value.trim(),
+          currency: document.getElementById('setting-currency').value.trim() || 'Rs.',
+          taxRate: parseFloat(document.getElementById('setting-tax').value) || 0,
+          receiptSize: document.getElementById('setting-receipt-size').value,
+          invoicePrefix: document.getElementById('setting-prefix').value.trim() || 'INV',
+          footerText: document.getElementById('setting-footer').value.trim()
+        };
+
+        storage.set('settings', updated);
+        document.getElementById('header-company-name').innerText = updated.companyName;
+        toast('Store settings updated & saved to data.json', 'success');
+        cartManager.calculateTotals();
+        posView.updateNextInvoiceLabel();
+      }
+    };
+
+    // --- DATA MANAGER & BACKUP ---
+    const dataManager = {
+      loadFullGroceryCatalog() {
+        if (!confirm('This will load all 150+ Sri Lankan grocery items with standard retail prices into your inventory. Continue?')) return;
+        storage.set('products', MASTER_GROCERY_CATALOG);
+        toast('Loaded 150+ grocery items into inventory & saved to data.json!', 'success');
+        productManager.renderTable();
+        posView.renderCategories();
+        posView.renderCatalog();
+        if (router.current === 'dashboard') dashboardView.refresh();
+      },
+      async loadFullGroceryCatalogRemote() {
+        if (!confirm('This will load all 83 Sri Lankan grocery items with standard retail prices into your inventory. Continue?')) return;
+        try {
+          const res = await fetch('/api/data');
+          if (res.ok) {
+            const json = await res.json();
+            if (json.data && json.data.products) {
+              storage.set('products', json.data.products);
+              toast('Loaded 83 grocery items into inventory & saved to data.json!', 'success');
+              productManager.renderTable();
+              posView.renderCategories();
+              posView.renderCatalog();
+              if (router.current === 'dashboard') dashboardView.refresh();
+              return;
+            }
+          }
+        } catch(e) {}
+        toast('Catalog loaded successfully', 'info');
+      },
+
+      exportFullBackup() {
+        const fullState = {
+          settings: storage.get('settings', DEFAULT_SETTINGS),
+          products: storage.get('products', []),
+          sales: storage.get('sales', []),
+          stockLogs: storage.get('stockLogs', []),
+          invoiceCounter: storage.get('invoiceCounter', 1001),
+          exportedAt: new Date().toISOString()
+        };
+        this.downloadJSON(fullState, `POS_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+        toast('Complete backup downloaded', 'success');
+      },
+
+      downloadJSON(data, filename) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+
+      importBackupFile() {
+        const fileInput = document.getElementById('backup-file-input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+          toast('Please select a JSON backup file first', 'warning');
+          return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (data.products && Array.isArray(data.products)) storage.set('products', data.products);
+            if (data.sales && Array.isArray(data.sales)) storage.set('sales', data.sales);
+            if (data.settings) storage.set('settings', data.settings);
+            if (data.invoiceCounter) storage.set('invoiceCounter', data.invoiceCounter);
+            if (data.stockLogs) storage.set('stockLogs', data.stockLogs);
+            toast('Backup restored successfully!', 'success');
+            setTimeout(() => location.reload(), 800);
+          } catch (err) {
+            toast('Invalid JSON backup file format', 'error');
+          }
+        };
+        reader.readAsText(file);
+      },
+
+      factoryReset() {
+        if (!confirm('CRITICAL: Reset all offline products and sales?')) return;
+        localStorage.clear();
+        toast('Reset completed. Reloading...', 'info');
+        setTimeout(() => location.reload(), 600);
+      }
+    };
+
+    // --- APPLICATION BOOTSTRAPPER ---
+    const app = {
+      async init() {
+        this.startClock();
+        await storage.init();
+        storage.startAutoSync();
+        settingsManager.init();
+        posView.init();
+        cartManager.renderCart();
+
+        // Cross-tab auto-sync
+        window.addEventListener('storage', (e) => {
+          if (e.key && e.key.startsWith('shorjs_')) {
+            storage.init().then(() => {
+              posView.renderCatalog();
+              posView.renderCategories();
+              if (router.current === 'products') productManager.renderTable();
+              if (router.current === 'dashboard') dashboardView.refresh();
+              if (router.current === 'history') historyManager.renderTable();
+            });
+          }
+        });
+      },
+
+      startClock() {
+        const clockEl = document.getElementById('current-clock');
+        const dateEl = document.getElementById('current-date');
+        const update = () => {
+          const now = new Date();
+          if (clockEl) clockEl.innerText = now.toLocaleTimeString();
+          if (dateEl) dateEl.innerText = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        };
+        update();
+        setInterval(update, 1000);
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
+</body>
+</html>
